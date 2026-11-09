@@ -1,36 +1,80 @@
-/* Inicio de sesión: una tarjeta compacta; en pantallas anchas, ilustración a un lado */
+/* Inicio de sesión: tarjeta de vidrio sobre la ilustración, en teléfono y en pantallas anchas */
 
 .pagina {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow: hidden;
+}
+
+/* Logo arriba, en el centro de la pantalla */
+.cabecera {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 1rem 0;
 }
 
 .lado {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   padding: 1rem;
 }
 
-/* La tarjeta del acceso */
+/* ---------- Ilustración de fondo ---------- */
+
+/* Fondo de toda la página. La imagen tiene fondo blanco: multiply lo deja igual al color
+   de la página. Una máscara circular la desvanece y la tarjeta de vidrio queda encima. */
+.arte {
+  position: absolute;
+  inset: 0;
+}
+
+.arte::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/ciudad-noche.webp') 50% 45% / 190% auto no-repeat;
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 48%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 60% at 50% 48%, #000 45%, transparent 100%);
+}
+
+/* ---------- Tarjeta de vidrio ---------- */
+
 .copia {
   width: 100%;
   max-width: 28rem;
   padding: 1.25rem 1.125rem;
+  border: 1px solid rgb(255 255 255 / 0.65);
   border-radius: 18px;
-  background: var(--papel);
-  box-shadow:
-    0 0 0 1px var(--linea),
-    0 24px 48px -28px rgb(27 21 72 / 0.3);
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 24px 48px -24px rgb(27 21 72 / 0.35);
 }
 
-/* Logo arriba, en el centro de la pantalla */
-.cabecera {
-  display: flex;
-  justify-content: center;
-  padding: 1.25rem 1rem 0;
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .copia {
+    background: rgb(255 255 255 / 0.45);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    backdrop-filter: blur(12px) saturate(1.5);
+  }
+
+  .rol {
+    background: rgb(255 255 255 / 0.4);
+    border-color: rgb(255 255 255 / 0.7);
+  }
+
+  .rol:hover,
+  .rol:focus-visible {
+    background: rgb(236 233 251 / 0.8);
+    border-color: var(--sello);
+  }
 }
 
 .titulo {
@@ -111,42 +155,27 @@
   text-align: center;
 }
 
-/* La ilustración existe solo en pantallas anchas: como fondo de CSS dentro de la
-   consulta de medios, el teléfono no la descarga. */
-.arte {
-  display: none;
-}
+/* ---------- Pantallas anchas: logo flotando, tarjeta a la derecha sobre la imagen ---------- */
 
 @media (min-width: 881px) {
   .pagina {
-    position: relative;
     grid-template-rows: 1fr;
-    overflow: hidden;
-  }
-
-  /* El acceso ocupa el lado derecho, por encima de la ilustración */
-  .lado {
-    position: relative;
-    z-index: 1;
-    width: 66%;
-    margin-left: auto;
-    padding: 1.5rem clamp(1.5rem, 4vw, 3.5rem);
   }
 
   .cabecera {
     position: absolute;
     inset: 0 0 auto;
-    z-index: 2;
     padding-top: 1.5rem;
   }
 
-  /* Tarjeta de vidrio: translúcida, desenfoca lo que hay detrás. Solo en pantallas anchas,
-     donde hay algo detrás; en el teléfono el desenfoque costaría y no se vería. */
+  .lado {
+    width: 66%;
+    margin-left: auto;
+    padding: 1.5rem clamp(1.5rem, 4vw, 3.5rem);
+  }
+
   .copia {
     padding: 1.75rem 1.5rem 1.5rem;
-    border: 1px solid rgb(255 255 255 / 0.65);
-    background: rgb(255 255 255 / 0.9);
-    box-shadow: 0 24px 48px -24px rgb(27 21 72 / 0.35);
   }
 
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -155,36 +184,13 @@
       -webkit-backdrop-filter: blur(16px) saturate(1.5);
       backdrop-filter: blur(16px) saturate(1.5);
     }
-
-    .rol {
-      background: rgb(255 255 255 / 0.4);
-      border-color: rgb(255 255 255 / 0.7);
-    }
-
-    .rol:hover,
-    .rol:focus-visible {
-      background: rgb(236 233 251 / 0.8);
-      border-color: var(--sello);
-    }
   }
 
-  /* Fondo de toda la página: la ilustración (de fondo blanco) se mezcla con el color de la
-     página con multiply, así el blanco desaparece. Una máscara circular centrada a la
-     izquierda la desvanece hacia la derecha, donde está el login, y el desvanecido cruza
-     la división hasta quedar detrás de la tarjeta. */
-  .arte {
-    position: absolute;
-    inset: 0;
-    display: block;
-  }
-
+  /* La ilustración queda a la izquierda, llega hasta detrás de la tarjeta y se desvanece
+     hacia la derecha, donde está el login. */
   .arte::before {
-    content: '';
-    position: absolute;
     inset: 0 8% 0 0;
     background: url('/ciudad-noche.webp') left center / contain no-repeat;
-    mix-blend-mode: multiply;
-    /* Llega hasta detrás de la tarjeta de vidrio y ahí se desvanece */
     -webkit-mask-image: radial-gradient(ellipse 72% 78% at 38% 50%, #000 40%, transparent 100%);
     mask-image: radial-gradient(ellipse 72% 78% at 38% 50%, #000 40%, transparent 100%);
   }

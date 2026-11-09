@@ -1,6 +1,7 @@
 import { Bell, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
+import { cerrarSesion } from '@/lib/auth/acciones'
 import styles from './app-shell.module.css'
 
 function iniciales(nombre: string) {
@@ -35,11 +36,12 @@ export function AppShell({
           <span className={styles.conjunto}>Torres del Parque</span>
 
           <div className={styles.fin}>
-            {/* Aún no hay sesión real: cerrar lleva de vuelta al inicio de sesión */}
-            <Link href="/" prefetch={false} className={`btn ${styles.salir}`} data-variant="quiet">
-              <LogOut aria-hidden="true" />
-              <span className={styles.salirTexto}>Cerrar sesión</span>
-            </Link>
+            <form action={cerrarSesion}>
+              <button type="submit" className={`btn ${styles.salir}`} data-variant="quiet">
+                <LogOut aria-hidden="true" />
+                <span className={styles.salirTexto}>Cerrar sesión</span>
+              </button>
+            </form>
             <button type="button" className={styles.campana} aria-label="Notificaciones, hay mensajes nuevos">
               <Bell aria-hidden="true" />
               <i aria-hidden="true" />

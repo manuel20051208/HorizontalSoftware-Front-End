@@ -1,0 +1,538 @@
+/* Usuarios: lista de cuentas y alta de una cuenta nueva (módulo administrador) */
+
+.pagina {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.volver {
+  justify-self: start;
+  margin: 0 0 -0.75rem -0.625rem;
+}
+
+/* ---------- Encabezado ---------- */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+}
+
+.titulo {
+  max-width: 40rem;
+}
+
+.sub {
+  margin-top: 0.75rem;
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+}
+
+/* ---------- Filtros ---------- */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+
+.grupoFiltro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.filtro {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.875rem;
+  border: 1.5px solid var(--linea);
+  border-radius: 999px;
+  background: var(--papel);
+  color: var(--tinta);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.filtro:hover {
+  border-color: var(--sello);
+}
+
+.filtro[aria-current='page'] {
+  border-color: var(--tinta);
+  background: var(--tinta);
+  color: #ffffff;
+}
+
+@media (pointer: coarse) {
+  .filtro {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Lista ---------- */
+
+.panel {
+  padding: 1.5rem;
+}
+
+.panelCabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla th {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--linea-fuerte);
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--linea);
+  vertical-align: middle;
+}
+
+.tabla th:first-child,
+.tabla td:first-child {
+  padding-left: 0;
+}
+
+.tabla th:last-child,
+.tabla td:last-child {
+  padding-right: 0;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.nombre {
+  display: block;
+  font-size: 1.0625rem;
+}
+
+.correo {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.cAccion {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.sinDato {
+  color: var(--tinta-2);
+}
+
+.formActivo {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+}
+
+.errorFila {
+  max-width: 12rem;
+  color: var(--alerta);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: right;
+  white-space: normal;
+}
+
+.vacio {
+  padding: 1.5rem 0 0.75rem;
+  color: var(--tinta-2);
+  text-align: center;
+}
+
+.problema {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radio-control);
+  background: var(--alerta-tinte);
+  color: var(--alerta);
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.problema svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+/* ---------- Formulario de cuenta nueva ---------- */
+
+.formulario {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 46rem;
+  padding: 1.5rem;
+}
+
+.seccion {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.seccion + .seccion {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--linea);
+}
+
+.leyenda {
+  margin-bottom: 0.875rem;
+  padding: 0;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.ancho {
+  grid-column: 1 / -1;
+}
+
+/* Tipo de cuenta: tres tarjetas-radio */
+.tipos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.tipo {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.875rem 2.25rem 0.875rem 0.875rem;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: 12px;
+  background: var(--papel);
+  cursor: pointer;
+}
+
+.tipo:hover {
+  border-color: var(--sello);
+}
+
+.tipo:has(:checked) {
+  border-color: var(--sello);
+  background: var(--sello-tinte);
+  box-shadow: inset 0 0 0 1px var(--sello);
+}
+
+.tipo:has(:focus-visible) {
+  outline: 3px solid var(--sello);
+  outline-offset: 2px;
+}
+
+/* El radio real sigue ahí para el teclado y los lectores de pantalla */
+.radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tipoIcono {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--tinta-2);
+}
+
+.tipo:has(:checked) .tipoIcono {
+  color: var(--sello);
+}
+
+.tipoNombre {
+  display: block;
+  font-weight: 720;
+  font-stretch: 112%;
+  line-height: 1.2;
+}
+
+.tipoDescripcion {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.marca {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--sello);
+}
+
+.tipo:has(:checked) .marca {
+  display: block;
+}
+
+/* Campos */
+.grupo {
+  display: grid;
+  align-content: start;
+  gap: 0.375rem;
+}
+
+.etiqueta {
+  color: var(--tinta);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.opcional {
+  color: var(--tinta-2);
+  font-weight: 500;
+}
+
+.entrada {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 0.875rem;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--radio-control);
+  background: var(--papel);
+  color: var(--tinta);
+  font: inherit;
+}
+
+.entrada:focus {
+  border-color: var(--sello);
+}
+
+.entrada[aria-invalid='true'] {
+  border-color: var(--alerta);
+}
+
+.entrada:disabled {
+  background: var(--concreto);
+  color: var(--tinta-2);
+  cursor: not-allowed;
+}
+
+.clave {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.claveEntrada {
+  flex: 1;
+  min-width: 0;
+  letter-spacing: 0.03em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.ayudaCampo {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.errorCampo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  color: var(--alerta);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.errorCampo svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+}
+
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--linea);
+}
+
+/* ---------- Cuenta creada ---------- */
+
+.exito {
+  display: grid;
+  justify-items: start;
+  gap: 0.875rem;
+  max-width: 46rem;
+  padding: 1.5rem;
+}
+
+.exito:focus {
+  outline: none;
+}
+
+.exitoNombre {
+  font-size: 1.5rem;
+}
+
+.credenciales {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  border-radius: var(--radio-control);
+  background: var(--concreto);
+}
+
+.credenciales div {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.credenciales dt {
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.credenciales dd {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.claveTexto {
+  letter-spacing: 0.04em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.activacion {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.exitoAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+/* ---------- Pantallas angostas ---------- */
+
+@media (max-width: 720px) {
+  .panel,
+  .formulario,
+  .exito {
+    padding: 1.25rem 1rem;
+  }
+
+  .rejilla,
+  .tipos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .credenciales div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .pie :global(.btn) {
+    flex: 1;
+  }
+
+  /* La tabla pasa a filas-tarjeta */
+  .tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tabla,
+  .tabla tbody {
+    display: block;
+  }
+
+  .tabla tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'persona persona'
+      'tipo estado'
+      'apto accion';
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .tabla tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .tabla td,
+  .tabla td:first-child,
+  .tabla td:last-child {
+    display: block;
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  .cPersona {
+    grid-area: persona;
+  }
+  .cTipo {
+    grid-area: tipo;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  .cEstado {
+    grid-area: estado;
+    justify-self: end;
+  }
+  .cApto {
+    grid-area: apto;
+    font-size: 0.9375rem;
+  }
+  .cAccion {
+    grid-area: accion;
+    justify-self: end;
+  }
+  .cCreada,
+  .tabla td.sinDato {
+    display: none;
+  }
+}

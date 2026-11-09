@@ -44,11 +44,11 @@
   align-items: start;
 }
 
-/* El resumen no va en tarjeta: es texto sobre el escritorio */
+/* El resumen del mes va en su tarjeta, como el resto de los bloques */
 .resumen {
   display: grid;
   gap: 1.75rem;
-  padding-top: 0.25rem;
+  padding: 1.5rem;
 }
 
 .rotulo {
@@ -95,6 +95,17 @@
 
 .cifra dd + dd {
   margin-top: 0.125rem;
+}
+
+.enlace {
+  color: var(--sello);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.enlace:hover {
+  color: var(--sello-hondo);
 }
 
 /* ---------- Comunicados y pagos ---------- */
@@ -191,6 +202,7 @@
   .resumen {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
+    padding: 1.25rem 1rem;
   }
 
   .acciones {

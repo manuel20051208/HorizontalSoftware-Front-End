@@ -1,6 +1,17 @@
 'use client'
 
-import { CalendarClock, Check, Clock, Megaphone, Receipt, TrendingUp, UserCheck, UserPlus } from 'lucide-react'
+import {
+  CalendarClock,
+  Check,
+  Clock,
+  type LucideIcon,
+  Megaphone,
+  Receipt,
+  TrendingUp,
+  UserPlus,
+  Users,
+} from 'lucide-react'
+import Link from 'next/link'
 import { Aviso, useAviso } from '@/components/ui/notice'
 import { Chip } from '@/components/ui/chip'
 import { Plate } from '@/components/ui/plate'
@@ -9,12 +20,12 @@ import { useHoy } from '@/lib/use-hoy'
 import styles from './admin-dashboard.module.css'
 import { TowerPlan } from './tower-plan'
 
-const ACCIONES = [
+const ACCIONES: { texto: string; icono: LucideIcon; variante: 'primary' | 'secondary'; href?: string }[] = [
   { texto: 'Nuevo comunicado', icono: Megaphone, variante: 'primary' },
-  { texto: 'Autorizar usuario', icono: UserCheck, variante: 'secondary' },
+  { texto: 'Crear cuenta', icono: UserPlus, variante: 'secondary', href: '/admin/usuarios/nueva' },
   { texto: 'Registrar pago', icono: Receipt, variante: 'secondary' },
-  { texto: 'Invitar vigilante', icono: UserPlus, variante: 'secondary' },
-] as const
+  { texto: 'Usuarios', icono: Users, variante: 'secondary', href: '/admin/usuarios' },
+]
 
 const COMUNICADOS = [
   {
@@ -61,25 +72,32 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className={styles.acciones}>
-          {ACCIONES.map(({ texto, icono: Icono, variante }) => (
-            <button
-              key={texto}
-              type="button"
-              className={`btn ${styles.accion}`}
-              data-variant={variante}
-              onClick={() => avisar(`Acción lista para conectar con tu backend: ${texto}`)}
-            >
-              <Icono aria-hidden="true" />
-              {texto}
-            </button>
-          ))}
+          {ACCIONES.map(({ texto, icono: Icono, variante, href }) =>
+            href ? (
+              <Link key={texto} href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant={variante}>
+                <Icono aria-hidden="true" />
+                {texto}
+              </Link>
+            ) : (
+              <button
+                key={texto}
+                type="button"
+                className={`btn ${styles.accion}`}
+                data-variant={variante}
+                onClick={() => avisar(`Acción lista para conectar con tu backend: ${texto}`)}
+              >
+                <Icono aria-hidden="true" />
+                {texto}
+              </button>
+            ),
+          )}
         </div>
       </header>
 
       <div className={styles.principal}>
         <TowerPlan onAviso={avisar} />
 
-        <aside className={styles.resumen} aria-label="Resumen del mes">
+        <aside className={`hoja ${styles.resumen}`} aria-label="Resumen del mes">
           <div>
             <p className={styles.rotulo}>Recaudo de noviembre</p>
             <p className={`t-hero ${styles.hero}`}>{copMillones(RECAUDO_MES)}</p>
@@ -100,7 +118,12 @@ export function AdminDashboard() {
             <div className={styles.cifra}>
               <dt>Por autorizar</dt>
               <dd className="t-cifra">12</dd>
-              <dd className="t-nota">usuarios nuevos esperando aprobación</dd>
+              <dd className="t-nota">
+                usuarios nuevos esperando aprobación ·{' '}
+                <Link href="/admin/usuarios?estado=inactivas" prefetch={false} className={styles.enlace}>
+                  Revisar
+                </Link>
+              </dd>
             </div>
             <div className={styles.cifra}>
               <dt>Comunicados activos</dt>
