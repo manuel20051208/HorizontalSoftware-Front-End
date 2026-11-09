@@ -22,10 +22,12 @@ export type Resultado<T> =
    */
   | { ok: false; status: number; mensaje: string; errores?: Record<string, string> }
 
+export type MetodoHttp = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
 /** Llamada al backend (POST por defecto). Nunca lanza: los errores vuelven como { ok: false }. */
 export async function llamarApi<T = unknown>(
   ruta: string,
-  { body, token, metodo = 'POST' }: { body?: unknown; token?: string; metodo?: 'GET' | 'POST' | 'PATCH' } = {},
+  { body, token, metodo = 'POST' }: { body?: unknown; token?: string; metodo?: MetodoHttp } = {},
 ): Promise<Resultado<T>> {
   let respuesta: Response
   try {

@@ -1,178 +1,207 @@
 'use client'
 
 import {
-  CalendarClock,
+  Bell,
+  CalendarDays,
   Check,
+  CircleAlert,
+  ClipboardList,
   Clock,
-  type LucideIcon,
+  FileText,
   Megaphone,
   Receipt,
-  TrendingUp,
+  RotateCcw,
   UserPlus,
   Users,
+  Wallet,
+  XCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { Aviso, useAviso } from '@/components/ui/notice'
 import { Chip } from '@/components/ui/chip'
-import { Plate } from '@/components/ui/plate'
-import { cop, copMillones, POR_COBRAR, RECAUDO_MES, TOTAL_UNIDADES, TOTALES, type Torre } from '@/lib/complex'
+import { fechaLarga, pesos } from '@/lib/api/acciones'
+import {
+  ESTADO_TRANSACCION_TEXTO,
+  type EstadoTransaccion,
+  type InmuebleResumen,
+  type Notificacion,
+  type Pago,
+  type ResumenAdmin,
+} from '@/lib/api/tipos'
 import { useHoy } from '@/lib/use-hoy'
 import styles from './admin-dashboard.module.css'
 import { TowerPlan } from './tower-plan'
 
-const ACCIONES: { texto: string; icono: LucideIcon; variante: 'primary' | 'secondary'; href?: string }[] = [
-  { texto: 'Nuevo comunicado', icono: Megaphone, variante: 'primary' },
+const ACCIONES: { texto: string; icono: LucideIcon; variante: 'primary' | 'secondary'; href: string }[] = [
+  { texto: 'Nuevo comunicado', icono: Megaphone, variante: 'primary', href: '/admin/notificaciones' },
   { texto: 'Crear cuenta', icono: UserPlus, variante: 'secondary', href: '/admin/usuarios/nueva' },
-  { texto: 'Registrar pago', icono: Receipt, variante: 'secondary' },
+  { texto: 'Liquidaciones', icono: FileText, variante: 'secondary', href: '/admin/liquidaciones' },
+  { texto: 'Zonas comunes', icono: ClipboardList, variante: 'secondary', href: '/admin/zonas-comunes' },
+  { texto: 'Reglas de reserva', icono: CalendarDays, variante: 'secondary', href: '/admin/reglas-reserva' },
+  { texto: 'Conciliar pago', icono: Receipt, variante: 'secondary', href: '/admin/inmuebles' },
   { texto: 'Usuarios', icono: Users, variante: 'secondary', href: '/admin/usuarios' },
 ]
 
-const COMUNICADOS = [
-  {
-    titulo: 'Mantenimiento del ascensor de la Torre B',
-    para: 'Todos los residentes',
-    cuando: 'Hoy, 9:42 a. m.',
-    estado: 'Publicado',
-  },
-  {
-    titulo: 'Asamblea general ordinaria de copropietarios',
-    para: 'Propietarios',
-    cuando: 'Sale el lunes 9 de noviembre, 8:00 a. m.',
-    estado: 'Programado',
-  },
-  {
-    titulo: 'Cierre temporal de la piscina',
-    para: 'Todos los residentes',
-    cuando: '3 de noviembre, 11:20 a. m.',
-    estado: 'Publicado',
-  },
-] as const
+const TONO_PAGO: Record<EstadoTransaccion, 'ok' | 'wait' | 'alert' | 'neutral'> = {
+  APROBADO: 'ok',
+  PENDIENTE: 'wait',
+  RECHAZADO: 'alert',
+  ANULADO: 'alert',
+  REEMBOLSADO: 'neutral',
+}
 
-const PAGOS: { nombre: string; torre: Torre; apto: number; estado: 'Confirmado' | 'Pendiente'; cuando: string }[] = [
-  { nombre: 'Laura Méndez', torre: 'A', apto: 402, estado: 'Confirmado', cuando: 'Hace 8 min' },
-  { nombre: 'Ana Torres', torre: 'A', apto: 201, estado: 'Pendiente', cuando: 'Hace 35 min' },
-  { nombre: 'Carlos Rojas', torre: 'B', apto: 803, estado: 'Confirmado', cuando: 'Hace 2 h' },
-  { nombre: 'Julián Castro', torre: 'C', apto: 504, estado: 'Confirmado', cuando: 'Ayer' },
-]
+const ICONO_PAGO = {
+  APROBADO: Check,
+  PENDIENTE: Clock,
+  RECHAZADO: XCircle,
+  ANULADO: XCircle,
+  REEMBOLSADO: RotateCcw,
+} as const
 
-const VALOR_CUOTA = 485_000
+function mesDelPeriodo(periodo: string) {
+  const fecha = new Date(`${periodo.slice(0, 10)}T00:00:00Z`)
+  if (Number.isNaN(fecha.getTime())) return periodo
+  const texto = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(fecha)
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
 
-export function AdminDashboard() {
-  const { mensaje, avisar } = useAviso()
+function fechaHora(valor: string) {
+  if (!valor) return '—'
+  const fecha = new Date(valor)
+  if (Number.isNaN(fecha.getTime())) return valor
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Bogota',
+  }).format(fecha)
+}
+
+export function AdminDashboard({
+  resumen,
+  inmuebles,
+  pagos,
+  usuariosInactivos,
+  notificaciones,
+  resumenError,
+}: {
+  resumen: ResumenAdmin
+  inmuebles: InmuebleResumen[]
+  pagos: Pago[]
+  usuariosInactivos: number
+  notificaciones: Notificacion[]
+  resumenError: boolean
+}) {
   const hoy = useHoy()
+  const ultimosPagos = pagos.slice(0, 6)
+  const ultimosAvisos = notificaciones.slice(0, 4)
 
   return (
     <div className={styles.pagina}>
       <header className={styles.cabecera}>
         <div className={styles.titulo}>
-          <h1 className="t-title">Panel administrativo</h1>
+          <p className="t-rotulo">{hoy || 'Panel de administración'}</p>
+          <h1 className="t-title">Tu conjunto, en orden.</h1>
           <p className={styles.sub}>
-            <strong className="fecha-hoy">{hoy}</strong>
-            La administración de noviembre vence el martes 10.
+            Recaudo, cartera y movimientos del periodo <strong>{mesDelPeriodo(resumen.periodo)}</strong>.
           </p>
         </div>
+
         <div className={styles.acciones}>
-          {ACCIONES.map(({ texto, icono: Icono, variante, href }) =>
-            href ? (
-              <Link key={texto} href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant={variante}>
-                <Icono aria-hidden="true" />
-                {texto}
-              </Link>
-            ) : (
-              <button
-                key={texto}
-                type="button"
-                className={`btn ${styles.accion}`}
-                data-variant={variante}
-                onClick={() => avisar(`Acción lista para conectar con tu backend: ${texto}`)}
-              >
-                <Icono aria-hidden="true" />
-                {texto}
-              </button>
-            ),
-          )}
+          {ACCIONES.map(({ texto, icono: Icono, variante, href }) => (
+            <Link key={texto} href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant={variante}>
+              <Icono aria-hidden="true" />
+              {texto}
+            </Link>
+          ))}
         </div>
       </header>
 
+      {resumenError && (
+        <p className={styles.problema} role="alert">
+          <CircleAlert aria-hidden="true" />
+          <span>No pudimos cargar el resumen del periodo. Los totales pueden aparecer en cero.</span>
+        </p>
+      )}
+
       <div className={styles.principal}>
-        <TowerPlan onAviso={avisar} />
+        <TowerPlan inmuebles={inmuebles} />
 
         <aside className={`hoja ${styles.resumen}`} aria-label="Resumen del mes">
           <div>
-            <p className={styles.rotulo}>Recaudo de noviembre</p>
-            <p className={`t-hero ${styles.hero}`}>{copMillones(RECAUDO_MES)}</p>
+            <p className={styles.rotulo}>Recaudo de {mesDelPeriodo(resumen.periodo)}</p>
+            <p className={`t-hero ${styles.hero}`}>{pesos(resumen.recaudoMes)}</p>
             <p className={styles.delta}>
-              <TrendingUp aria-hidden="true" strokeWidth={2.4} />
-              +12,8 % frente a octubre
+              <Wallet aria-hidden="true" strokeWidth={2.4} />
+              {resumen.alDia} de {resumen.totalInmuebles} inmuebles al día
             </p>
           </div>
 
           <dl className={styles.cifras}>
             <div className={styles.cifra}>
               <dt>Por cobrar</dt>
-              <dd className="t-cifra">{copMillones(POR_COBRAR)}</dd>
+              <dd className="t-cifra">{pesos(resumen.porCobrar)}</dd>
               <dd className="t-nota">
-                {TOTAL_UNIDADES - TOTALES['al-dia']} apartamentos, {TOTALES.vencida} con octubre sin pagar
+                {resumen.vencidas} vencidas, {resumen.porVencer} por vencer y {resumen.sinLiquidacion} sin liquidación
               </dd>
             </div>
             <div className={styles.cifra}>
               <dt>Por autorizar</dt>
-              <dd className="t-cifra">12</dd>
+              <dd className="t-cifra">{usuariosInactivos}</dd>
               <dd className="t-nota">
-                usuarios nuevos esperando aprobación ·{' '}
+                cuentas esperando aprobación ·{' '}
                 <Link href="/admin/usuarios?estado=inactivas" prefetch={false} className={styles.enlace}>
                   Revisar
                 </Link>
               </dd>
             </div>
             <div className={styles.cifra}>
-              <dt>Comunicados activos</dt>
-              <dd className="t-cifra">8</dd>
-              <dd className="t-nota">3 programados esta semana</dd>
+              <dt>Avisos recibidos</dt>
+              <dd className="t-cifra">{notificaciones.length}</dd>
+              <dd className="t-nota">
+                en tu cuenta ·{' '}
+                <Link href="/admin/notificaciones" prefetch={false} className={styles.enlace}>
+                  Ver comunicados
+                </Link>
+              </dd>
             </div>
           </dl>
         </aside>
       </div>
 
       <div className={styles.inferior}>
-        <section className={`hoja ${styles.panel}`} aria-labelledby="comunicados-titulo">
+        <section className={`hoja ${styles.panel}`} aria-labelledby="avisos-titulo">
           <header className={styles.panelCabecera}>
             <div>
-              <h2 id="comunicados-titulo" className="t-section">
-                Comunicados recientes
+              <h2 id="avisos-titulo" className="t-section">
+                Avisos recientes
               </h2>
-              <p className="t-nota">Lo que ha recibido la comunidad</p>
+              <p className="t-nota">Mensajes recibidos por tu cuenta</p>
             </div>
-            <button
-              type="button"
-              className="btn"
-              data-variant="quiet"
-              data-size="sm"
-              onClick={() => avisar('Acción lista para conectar con tu backend: Ver todos los comunicados')}
-            >
+            <Link href="/admin/notificaciones" prefetch={false} className="btn" data-variant="quiet" data-size="sm">
               Ver todos
-            </button>
+            </Link>
           </header>
-          <ul>
-            {COMUNICADOS.map((c) => (
-              <li key={c.titulo} className={styles.comunicado}>
-                <div>
-                  <h3 className={`t-voz ${styles.comunicadoTitulo}`}>{c.titulo}</h3>
-                  <p className="t-nota">Para {c.para.toLowerCase()}</p>
-                  <p className="t-nota">{c.cuando}</p>
-                </div>
-                {c.estado === 'Publicado' ? (
-                  <Chip tono="ok" icono={Check}>
-                    Publicado
+
+          {ultimosAvisos.length === 0 ? (
+            <p className={styles.vacio}>
+              <Bell aria-hidden="true" />
+              No tienes avisos todavía.
+            </p>
+          ) : (
+            <ul>
+              {ultimosAvisos.map((n) => (
+                <li key={n.id} className={styles.comunicado}>
+                  <div>
+                    <h3 className={`t-voz ${styles.comunicadoTitulo}`}>{n.mensaje}</h3>
+                    <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
+                  </div>
+                  <Chip tono="info" icono={Bell}>
+                    {n.tipoNotificacion}
                   </Chip>
-                ) : (
-                  <Chip tono="info" icono={CalendarClock}>
-                    Programado
-                  </Chip>
-                )}
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className={`hoja ${styles.panel}`} aria-labelledby="pagos-titulo">
@@ -181,50 +210,51 @@ export function AdminDashboard() {
               <h2 id="pagos-titulo" className="t-section">
                 Últimos pagos
               </h2>
-              <p className="t-nota">Recibidos por Wompi</p>
+              <p className="t-nota">Movimientos registrados en el conjunto</p>
             </div>
+            <Link href="/admin/pagos" prefetch={false} className="btn" data-variant="quiet" data-size="sm">
+              Ver todos
+            </Link>
           </header>
-          <table className={styles.tabla}>
-            <caption className="sr-only">Últimos pagos de administración recibidos</caption>
-            <thead>
-              <tr>
-                <th scope="col">Apartamento</th>
-                <th scope="col">Residente</th>
-                <th scope="col" className={styles.derecha}>
-                  Valor
-                </th>
-                <th scope="col">Estado</th>
-                <th scope="col">Cuándo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PAGOS.map((p) => (
-                <tr key={`${p.torre}${p.apto}`}>
-                  <td className={styles.cPlaca}>
-                    <Plate torre={p.torre} apto={p.apto} />
-                  </td>
-                  <td className={`t-voz ${styles.cNombre}`}>{p.nombre}</td>
-                  <td className={`t-columna ${styles.derecha} ${styles.cValor}`}>{cop(VALOR_CUOTA)}</td>
-                  <td className={styles.cEstado}>
-                    {p.estado === 'Confirmado' ? (
-                      <Chip tono="ok" icono={Check}>
-                        Confirmado
-                      </Chip>
-                    ) : (
-                      <Chip tono="wait" icono={Clock}>
-                        Pendiente
-                      </Chip>
-                    )}
-                  </td>
-                  <td className={`t-nota ${styles.cCuando}`}>{p.cuando}</td>
+
+          {ultimosPagos.length === 0 ? (
+            <p className={styles.vacio}>
+              <Receipt aria-hidden="true" />
+              Aún no hay pagos registrados.
+            </p>
+          ) : (
+            <table className={styles.tabla}>
+              <caption className="sr-only">Últimos pagos de administración recibidos</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Inmueble</th>
+                  <th scope="col">Método</th>
+                  <th scope="col" className={styles.derecha}>
+                    Valor
+                  </th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Cuándo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ultimosPagos.map((p) => (
+                  <tr key={p.id}>
+                    <td className={`t-voz ${styles.cPlaca}`}>{p.direccionInmueble}</td>
+                    <td className={`t-nota ${styles.cMetodo}`}>{p.metodoPago}</td>
+                    <td className={`t-columna ${styles.derecha} ${styles.cValor}`}>{pesos(p.monto)}</td>
+                    <td className={styles.cEstado}>
+                      <Chip tono={TONO_PAGO[p.estado]} icono={ICONO_PAGO[p.estado]}>
+                        {ESTADO_TRANSACCION_TEXTO[p.estado]}
+                      </Chip>
+                    </td>
+                    <td className={`t-nota ${styles.cCuando}`}>{fechaLarga(p.fechaPago)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </section>
       </div>
-
-      <Aviso mensaje={mensaje} />
     </div>
   )
 }

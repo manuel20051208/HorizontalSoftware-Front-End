@@ -172,6 +172,13 @@
 
 /* ---------- Reservas e invitaciones ---------- */
 
+.inferior {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
 .proximas {
   padding: 1.5rem;
 }
@@ -223,10 +230,54 @@
   font-size: 1.125rem;
 }
 
+.pagos {
+  display: grid;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--linea);
+}
+
+.pagos li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-top: 1px solid var(--linea);
+}
+
+.aviso p {
+  line-height: 1.4;
+}
+
+.vacio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 1.25rem 0.5rem;
+  color: var(--tinta-2);
+}
+
+.vacio svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 /* ---------- Pantallas angostas ---------- */
 
 @media (max-width: 880px) {
-  .principal {
+  .principal,
+  .inferior {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1,64 +1,123 @@
 'use client'
 
-import { Check, CircleAlert, Clock, Send } from 'lucide-react'
-import { Fragment, useRef, useState, type CSSProperties } from 'react'
+import { Check, CircleAlert, Clock, ExternalLink, Send } from 'lucide-react'
+import Link from 'next/link'
+import { Fragment, useActionState, useRef, useState, type CSSProperties } from 'react'
 import { Chip } from '@/components/ui/chip'
 import { Plate } from '@/components/ui/plate'
+import type { EstadoAccion } from '@/lib/api/acciones'
+import { pesos } from '@/lib/api/acciones'
 import {
-  APTOS_POR_PISO,
-  cop,
-  ESTADO_TEXTO,
-  PISOS,
-  TORRES,
-  TOTAL_UNIDADES,
-  TOTALES,
-  UNIDADES,
-  type Estado,
-  type Torre,
-  type Unidad,
-} from '@/lib/complex'
+  ESTADO_CARTERA_TEXTO,
+  type EstadoCartera,
+  type InmuebleResumen,
+} from '@/lib/api/tipos'
+import { enviarRecordatorioForm } from '@/lib/admin/acciones'
 import styles from './tower-plan.module.css'
 
-const ESTADOS: Estado[] = ['al-dia', 'por-vencer', 'vencida']
-const TONO = { 'al-dia': 'ok', 'por-vencer': 'wait', vencida: 'alert' } as const
-const ICONO_CHIP = { 'al-dia': Check, 'por-vencer': Clock, vencida: CircleAlert } as const
-const POR_ID = new Map(UNIDADES.map((u) => [`${u.torre}-${u.apto}`, u]))
+const TORRES = ['A', 'B', 'C']
+const PISOS = 11
+const APTOS_POR_PISO = 6
 const FILAS = Array.from({ length: PISOS }, (_, i) => PISOS - i)
-const CON_SALDO = UNIDADES.filter((u) => u.estado !== 'al-dia').sort(
-  (a, b) => Number(b.estado === 'vencida') - Number(a.estado === 'vencida') || a.torre.localeCompare(b.torre) || a.apto - b.apto,
-)
+const ESTADOS: EstadoCartera[] = ['AL_DIA', 'POR_VENCER', 'VENCIDA', 'SIN_LIQUIDACION']
+const TONO = { AL_DIA: 'ok', POR_VENCER: 'wait', VENCIDA: 'alert', SIN_LIQUIDACION: 'neutral' } as const
+const ICONO_CHIP = { AL_DIA: Check, POR_VENCER: Clock, VENCIDA: CircleAlert, SIN_LIQUIDACION: Clock } as const
+const MARCA = { AL_DIA: 'al-dia', POR_VENCER: 'por-vencer', VENCIDA: 'vencida', SIN_LIQUIDACION: 'sin' } as const
 
+type Unidad = { inmueble: InmuebleResumen; torre: string; apto: number; piso: number }
 type Vista = 'plano' | 'lista'
 type Pista = { u: Unidad; x: number; y: number; abajo: boolean }
 
-function textoFecha(u: Unidad) {
-  if (u.estado === 'al-dia') return `Último pago el ${u.fecha}`
-  if (u.estado === 'por-vencer') return `Vence el ${u.fecha}`
-  return `Venció el ${u.fecha}`
+function partes(direccion: string) {
+  const m = /^([A-Z0-9]+)-(\d+)$/.exec(direccion.toUpperCase())
+  if (!m) return null
+  const apto = Number(m[2])
+  const piso = Math.floor(apto / 100)
+  const posicion = apto % 100
+  if (!Number.isFinite(piso) || piso < 1 || posicion < 1 || posicion > APTOS_POR_PISO) return null
+  return { torre: m[1], apto, piso }
 }
 
-/** Un recuadro de color con el ícono de su estado: la leyenda y las celdas hablan igual. */
-function Marca({ estado }: { estado: Estado }) {
+function textoFecha(u: Unidad) {
+  if (u.inmueble.estadoPago === 'SIN_LIQUIDACION') return 'Sin liquidación generada'
+  if (!u.inmueble.fechaLimitePendiente) return 'Sin fecha límite'
+  const fecha = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
+    new Date(`${u.inmueble.fechaLimitePendiente}T00:00:00Z`),
+  )
+  if (u.inmueble.estadoPago === 'VENCIDA') return `Venció el ${fecha}`
+  if (u.inmueble.estadoPago === 'POR_VENCER') return `Vence el ${fecha}`
+  return `Último vencimiento: ${fecha}`
+}
+
+function Marca({ estado }: { estado: EstadoCartera }) {
   return (
-    <span className={styles.marca} data-estado={estado} aria-hidden="true">
-      {estado === 'al-dia' && <Check strokeWidth={3} />}
-      {estado === 'por-vencer' && <Clock strokeWidth={2.8} />}
-      {estado === 'vencida' && <span className={styles.signo}>!</span>}
+    <span className={styles.marca} data-estado={MARCA[estado]} aria-hidden="true">
+      {estado === 'AL_DIA' && <Check strokeWidth={3} />}
+      {(estado === 'POR_VENCER' || estado === 'SIN_LIQUIDACION') && <Clock strokeWidth={2.8} />}
+      {estado === 'VENCIDA' && <span className={styles.signo}>!</span>}
     </span>
   )
 }
 
-export function TowerPlan({ onAviso }: { onAviso: (texto: string) => void }) {
+function BotonRecordar({ inmuebleId, direccion }: { inmuebleId: number; direccion: string }) {
+  const [estado, enviar, enviando] = useActionState<EstadoAccion, FormData>(enviarRecordatorioForm, undefined)
+  return (
+    <form action={enviar} style={{ display: 'grid', gap: '0.25rem', justifyItems: 'end' }}>
+      <input type="hidden" name="inmuebleId" value={inmuebleId} />
+      <button
+        type="submit"
+        className="btn"
+        data-variant="quiet"
+        data-size="sm"
+        disabled={enviando}
+        aria-label={`Enviar recordatorio de pago a ${direccion}`}
+      >
+        <Send aria-hidden="true" />
+        {enviando ? 'Enviando…' : 'Recordar'}
+      </button>
+      {estado?.estado === 'error' && (
+        <p style={{ color: 'var(--alerta)', fontSize: '0.75rem', maxWidth: '12rem' }} role="alert">
+          {estado.mensaje}
+        </p>
+      )}
+      {estado?.estado === 'ok' && (
+        <p style={{ color: 'var(--ok)', fontSize: '0.75rem', maxWidth: '12rem' }} role="status">
+          {estado.mensaje}
+        </p>
+      )}
+    </form>
+  )
+}
+
+export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
   const [vista, setVista] = useState<Vista>('plano')
-  const [filtro, setFiltro] = useState<Estado | null>(null)
-  const [torreMovil, setTorreMovil] = useState<Torre>('A')
+  const [filtro, setFiltro] = useState<EstadoCartera | null>(null)
+  const [torreMovil, setTorreMovil] = useState<string>('A')
   const [seleccion, setSeleccion] = useState<Unidad | null>(null)
   const [pista, setPista] = useState<Pista | null>(null)
   const lienzo = useRef<HTMLDivElement>(null)
 
-  const esSeleccion = (u: Unidad) => seleccion?.torre === u.torre && seleccion.apto === u.apto
-  const recordar = (u: Unidad) =>
-    onAviso(`Acción lista para conectar con tu backend: Enviar recordatorio a la torre ${u.torre}, apartamento ${u.apto}`)
+  const unidades = inmuebles
+    .map((inmueble) => {
+      const p = partes(inmueble.direccionInmueble)
+      return p ? { inmueble, ...p } : null
+    })
+    .filter((u): u is Unidad => u !== null)
+
+  const porId = new Map(unidades.map((u) => [`${u.torre}-${u.apto}`, u]))
+  const totales = Object.fromEntries(
+    ESTADOS.map((e) => [e, inmuebles.filter((i) => i.estadoPago === e).length]),
+  ) as Record<EstadoCartera, number>
+  const conSaldo = inmuebles
+    .filter((i) => i.estadoPago !== 'AL_DIA')
+    .sort(
+      (a, b) =>
+        Number(b.estadoPago === 'VENCIDA') - Number(a.estadoPago === 'VENCIDA') ||
+        a.direccionInmueble.localeCompare(b.direccionInmueble),
+    )
+  const filasLista = conSaldo.filter((i) => filtro === null || i.estadoPago === filtro)
+  const torres = [...new Set([...TORRES, ...unidades.map((u) => u.torre)])]
+  const esSeleccion = (u: Unidad) => seleccion?.inmueble.id === u.inmueble.id
 
   function mostrarPista(u: Unidad, el: HTMLElement) {
     const caja = lienzo.current?.getBoundingClientRect()
@@ -73,17 +132,16 @@ export function TowerPlan({ onAviso }: { onAviso: (texto: string) => void }) {
     })
   }
 
-  const filasLista = CON_SALDO.filter((u) => filtro === null || u.estado === filtro)
-
   return (
     <section className={`hoja ${styles.plano}`} aria-labelledby="plano-titulo">
       <header className={styles.cabecera}>
         <div>
           <h2 id="plano-titulo" className="t-section">
-            Cartera de noviembre
+            Cartera del periodo
           </h2>
           <p className={`t-nota ${styles.nota}`}>
-            Cada recuadro es un apartamento. La lista muestra los {TOTAL_UNIDADES - TOTALES['al-dia']} que tienen saldo.
+            Cada recuadro es un inmueble registrado. La lista muestra los {conSaldo.length} que tienen saldo o están sin
+            liquidación.
           </p>
         </div>
         <div className={styles.vistas} role="group" aria-label="Vista de la cartera">
@@ -95,207 +153,247 @@ export function TowerPlan({ onAviso }: { onAviso: (texto: string) => void }) {
         </div>
       </header>
 
-      <div className={styles.resumen}>
-        <div
-          className={styles.barra}
-          role="img"
-          aria-label={`${TOTALES['al-dia']} al día, ${TOTALES['por-vencer']} por vencer, ${TOTALES.vencida} vencidas, de ${TOTAL_UNIDADES} apartamentos`}
-        >
-          {ESTADOS.map((e) => (
-            <span key={e} data-estado={e} style={{ flexGrow: TOTALES[e] }} />
-          ))}
-        </div>
-        <ul className={styles.leyenda} aria-label="Filtrar por estado">
-          {ESTADOS.map((e) => (
-            <li key={e}>
-              <button
-                type="button"
-                className={styles.filtro}
-                aria-pressed={filtro === e}
-                onClick={() => setFiltro((actual) => (actual === e ? null : e))}
-              >
-                <Marca estado={e} />
-                <span>{ESTADO_TEXTO[e]}</span>
-                <span className={styles.total}>{TOTALES[e]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {vista === 'plano' ? (
-        <div className={styles.lienzo} ref={lienzo}>
-          <div className={styles.torres} role="group" aria-label="Torre que se muestra">
-            {TORRES.map((t) => (
-              <button key={t} type="button" className={styles.torreTab} aria-pressed={torreMovil === t} onClick={() => setTorreMovil(t)}>
-                Torre {t}
-              </button>
-            ))}
-          </div>
-
-          <div className={styles.rejilla}>
-            <span className={styles.pisoTitulo} aria-hidden="true">
-              Piso
-            </span>
-            {TORRES.map((t, i) => (
-              <h3 key={t} className={styles.torreNombre} style={{ '--col': 2 + i * 7 } as CSSProperties}>
-                Torre {t}
-              </h3>
-            ))}
-
-            {FILAS.map((piso, fila) => (
-              <Fragment key={piso}>
-                <span className={styles.piso} style={{ '--fila': fila + 2 } as CSSProperties} aria-hidden="true">
-                  {piso}
-                </span>
-                {TORRES.flatMap((torre, i) =>
-                  Array.from({ length: APTOS_POR_PISO }, (_, n) => {
-                    const u = POR_ID.get(`${torre}-${piso * 100 + n + 1}`)!
-                    const activa = filtro === null || filtro === u.estado
-                    return (
-                      <button
-                        key={`${torre}${u.apto}`}
-                        type="button"
-                        className={styles.celda}
-                        data-estado={u.estado}
-                        data-activa={activa ? 'true' : 'false'}
-                        data-visible-movil={torre === torreMovil ? 'true' : 'false'}
-                        style={{ '--fila': fila + 2, '--col': 2 + i * 7 + n, '--col-movil': 2 + n } as CSSProperties}
-                        // Los apartamentos al día son recuadros clicables; el teclado va directo a los que tienen saldo.
-                        tabIndex={u.estado === 'al-dia' ? -1 : 0}
-                        aria-label={`Torre ${u.torre}, apartamento ${u.apto}: ${ESTADO_TEXTO[u.estado]}`}
-                        aria-pressed={esSeleccion(u)}
-                        onClick={() => setSeleccion((actual) => (actual && esSeleccion(u) ? null : u))}
-                        onPointerEnter={(e) => mostrarPista(u, e.currentTarget)}
-                        onPointerLeave={() => setPista(null)}
-                        onFocus={(e) => mostrarPista(u, e.currentTarget)}
-                        onBlur={() => setPista(null)}
-                      >
-                        {u.estado === 'por-vencer' && <Clock aria-hidden="true" strokeWidth={2.8} />}
-                        {u.estado === 'vencida' && (
-                          <span className={styles.signo} aria-hidden="true">
-                            !
-                          </span>
-                        )}
-                      </button>
-                    )
-                  }),
-                )}
-              </Fragment>
-            ))}
-          </div>
-
-          {pista && (
-            <div
-              className={styles.pista}
-              data-abajo={pista.abajo}
-              style={{ left: pista.x, top: pista.y }}
-              role="tooltip"
-            >
-              <div className={styles.pistaCabecera}>
-                <Plate torre={pista.u.torre} apto={pista.u.apto} />
-                <Chip tono={TONO[pista.u.estado]} icono={ICONO_CHIP[pista.u.estado]}>
-                  {ESTADO_TEXTO[pista.u.estado]}
-                </Chip>
-              </div>
-              <p className={styles.pistaValor}>{pista.u.debe > 0 ? cop(pista.u.debe) : 'Sin saldo'}</p>
-              {pista.u.residente && <p className={`t-voz ${styles.pistaNombre}`}>{pista.u.residente}</p>}
-              <p className={styles.pistaFecha}>{textoFecha(pista.u)}</p>
-            </div>
-          )}
-        </div>
+      {inmuebles.length === 0 ? (
+        <p className={styles.vacia}>
+          Aún no hay inmuebles registrados.{' '}
+          <Link href="/admin/inmuebles/nuevo" className="btn" data-variant="quiet" data-size="sm">
+            Crear el primero
+          </Link>
+        </p>
       ) : (
-        <div className={styles.listaMarco}>
-          {filasLista.length === 0 ? (
-            <p className={styles.vacia}>Ningún apartamento con saldo en este estado.</p>
-          ) : (
-            <table className={styles.tabla}>
-              <caption className="sr-only">Apartamentos con saldo pendiente en noviembre</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Apartamento</th>
-                  <th scope="col">Residente</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col" className={styles.derecha}>
-                    Debe
-                  </th>
-                  <th scope="col">Vencimiento</th>
-                  <th scope="col">
-                    <span className="sr-only">Acción</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filasLista.map((u) => (
-                  <tr key={`${u.torre}${u.apto}`}>
-                    <td className={styles.cPlaca}>
-                      <Plate torre={u.torre} apto={u.apto} />
-                    </td>
-                    <td className={`t-voz ${styles.cNombre}`}>{u.residente}</td>
-                    <td className={styles.cEstado}>
-                      <Chip tono={TONO[u.estado]} icono={ICONO_CHIP[u.estado]}>
-                        {ESTADO_TEXTO[u.estado]}
-                      </Chip>
-                    </td>
-                    <td className={`t-columna ${styles.derecha} ${styles.cValor}`}>{cop(u.debe)}</td>
-                    <td className={`t-nota ${styles.cFecha}`}>
-                      <span className={styles.soloMovil}>{u.estado === 'vencida' ? 'Venció el ' : 'Vence el '}</span>
-                      {u.fecha}
-                    </td>
-                    <td className={styles.cAccion}>
-                      <button
-                        type="button"
-                        className="btn"
-                        data-variant="quiet"
-                        data-size="sm"
-                        onClick={() => recordar(u)}
-                        aria-label={`Enviar recordatorio a la torre ${u.torre}, apartamento ${u.apto}`}
-                      >
-                        <Send aria-hidden="true" />
-                        Recordar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+        <>
+          <div className={styles.resumen}>
+            <div
+              className={styles.barra}
+              role="img"
+              aria-label={`${totales.AL_DIA} al día, ${totales.POR_VENCER} por vencer, ${totales.VENCIDA} vencidas y ${totales.SIN_LIQUIDACION} sin liquidación, de ${inmuebles.length} inmuebles`}
+            >
+              {ESTADOS.map((e) => (
+                <span key={e} data-estado={MARCA[e]} style={{ flexGrow: totales[e] }} />
+              ))}
+            </div>
+            <ul className={styles.leyenda} aria-label="Filtrar por estado">
+              {ESTADOS.map((e) => (
+                <li key={e}>
+                  <button
+                    type="button"
+                    className={styles.filtro}
+                    aria-pressed={filtro === e}
+                    onClick={() => setFiltro((actual) => (actual === e ? null : e))}
+                  >
+                    <Marca estado={e} />
+                    <span>{ESTADO_CARTERA_TEXTO[e]}</span>
+                    <span className={styles.total}>{totales[e]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-      {vista === 'plano' && (
-        <footer className={styles.cajetin} data-seleccion={seleccion ? 'true' : 'false'} aria-live="polite">
-          {seleccion ? (
-            <div className={styles.detalle}>
-              <Plate torre={seleccion.torre} apto={seleccion.apto} />
-              <div className={styles.detalleTexto}>
-                <p className="t-voz">{seleccion.residente ?? 'Residente sin nombre en el ejemplo'}</p>
-                <p className="t-nota">{textoFecha(seleccion)}</p>
+          {vista === 'plano' ? (
+            <div className={styles.lienzo} ref={lienzo}>
+              <div className={styles.torres} role="group" aria-label="Torre que se muestra">
+                {torres.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={styles.torreTab}
+                    aria-pressed={torreMovil === t}
+                    onClick={() => setTorreMovil(t)}
+                  >
+                    Torre {t}
+                  </button>
+                ))}
               </div>
-              <Chip tono={TONO[seleccion.estado]} icono={ICONO_CHIP[seleccion.estado]}>
-                {ESTADO_TEXTO[seleccion.estado]}
-              </Chip>
-              <p className={styles.deuda}>
-                {seleccion.debe > 0 ? (
-                  <>
-                    <span className="t-cifra">{cop(seleccion.debe)}</span>
-                    <span className="t-nota">por pagar</span>
-                  </>
-                ) : (
-                  <span className="t-nota">Sin saldo</span>
-                )}
-              </p>
-              {seleccion.estado !== 'al-dia' && (
-                <button type="button" className="btn" data-variant="secondary" data-size="sm" onClick={() => recordar(seleccion)}>
-                  <Send aria-hidden="true" />
-                  Enviar recordatorio
-                </button>
+
+              <div className={styles.rejilla}>
+                <span className={styles.pisoTitulo} aria-hidden="true">
+                  Piso
+                </span>
+                {torres.map((t, i) => (
+                  <h3 key={t} className={styles.torreNombre} style={{ '--col': 2 + i * 7 } as CSSProperties}>
+                    Torre {t}
+                  </h3>
+                ))}
+
+                {FILAS.map((piso, fila) => (
+                  <Fragment key={piso}>
+                    <span className={styles.piso} style={{ '--fila': fila + 2 } as CSSProperties} aria-hidden="true">
+                      {piso}
+                    </span>
+                    {torres.flatMap((torre, i) =>
+                      Array.from({ length: APTOS_POR_PISO }, (_, n) => {
+                        const apto = piso * 100 + n + 1
+                        const u = porId.get(`${torre}-${apto}`)
+                        if (!u) {
+                          return (
+                            <span
+                              key={`${torre}${apto}`}
+                              className={styles.celda}
+                              data-estado="vacia"
+                              data-activa="false"
+                              data-visible-movil={torre === torreMovil ? 'true' : 'false'}
+                              style={{ '--fila': fila + 2, '--col': 2 + i * 7 + n, '--col-movil': 2 + n } as CSSProperties}
+                              aria-hidden="true"
+                            />
+                          )
+                        }
+                        const activa = filtro === null || filtro === u.inmueble.estadoPago
+                        return (
+                          <button
+                            key={`${torre}${apto}`}
+                            type="button"
+                            className={styles.celda}
+                            data-estado={MARCA[u.inmueble.estadoPago]}
+                            data-activa={activa ? 'true' : 'false'}
+                            data-visible-movil={torre === torreMovil ? 'true' : 'false'}
+                            style={{ '--fila': fila + 2, '--col': 2 + i * 7 + n, '--col-movil': 2 + n } as CSSProperties}
+                            tabIndex={u.inmueble.estadoPago === 'AL_DIA' ? -1 : 0}
+                            aria-label={`${u.inmueble.direccionInmueble}: ${ESTADO_CARTERA_TEXTO[u.inmueble.estadoPago]}`}
+                            aria-pressed={esSeleccion(u)}
+                            onClick={() => setSeleccion((actual) => (actual && esSeleccion(u) ? null : u))}
+                            onPointerEnter={(e) => mostrarPista(u, e.currentTarget)}
+                            onPointerLeave={() => setPista(null)}
+                            onFocus={(e) => mostrarPista(u, e.currentTarget)}
+                            onBlur={() => setPista(null)}
+                          >
+                            {u.inmueble.estadoPago === 'VENCIDA' && (
+                              <span className={styles.signo} aria-hidden="true">
+                                !
+                              </span>
+                            )}
+                          </button>
+                        )
+                      }),
+                    )}
+                  </Fragment>
+                ))}
+              </div>
+
+              {pista && (
+                <div
+                  className={styles.pista}
+                  data-abajo={pista.abajo}
+                  style={{ left: pista.x, top: pista.y }}
+                  role="tooltip"
+                >
+                  <div className={styles.pistaCabecera}>
+                    <Plate torre={pista.u.torre} apto={pista.u.apto} />
+                    <Chip tono={TONO[pista.u.inmueble.estadoPago]} icono={ICONO_CHIP[pista.u.inmueble.estadoPago]}>
+                      {ESTADO_CARTERA_TEXTO[pista.u.inmueble.estadoPago]}
+                    </Chip>
+                  </div>
+                  <p className={styles.pistaValor}>
+                    {pista.u.inmueble.saldoPendiente > 0 ? pesos(pista.u.inmueble.saldoPendiente) : 'Sin saldo'}
+                  </p>
+                  <p className={styles.pistaFecha}>{textoFecha(pista.u)}</p>
+                </div>
               )}
             </div>
           ) : (
-            <p className="t-nota">Toca un apartamento para ver su estado de cuenta.</p>
+            <div className={styles.listaMarco}>
+              {filasLista.length === 0 ? (
+                <p className={styles.vacia}>Ningún inmueble con saldo en este estado.</p>
+              ) : (
+                <table className={styles.tabla}>
+                  <caption className="sr-only">Inmuebles con saldo pendiente</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Apartamento</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col" className={styles.derecha}>
+                        Debe
+                      </th>
+                      <th scope="col">Vencimiento</th>
+                      <th scope="col">
+                        <span className="sr-only">Acciones</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasLista.map((i) => {
+                      const p = partes(i.direccionInmueble)
+                      const u = p ? porId.get(`${p.torre}-${p.apto}`) : undefined
+                      return (
+                        <tr key={i.id}>
+                          <td className={styles.cPlaca}>
+                            {p ? <Plate torre={p.torre} apto={p.apto} /> : i.direccionInmueble}
+                          </td>
+                          <td className={styles.cEstado}>
+                            <Chip tono={TONO[i.estadoPago]} icono={ICONO_CHIP[i.estadoPago]}>
+                              {ESTADO_CARTERA_TEXTO[i.estadoPago]}
+                            </Chip>
+                          </td>
+                          <td className={`t-columna ${styles.derecha} ${styles.cValor}`}>{pesos(i.saldoPendiente)}</td>
+                          <td className={`t-nota ${styles.cFecha}`}>{u ? textoFecha(u) : '—'}</td>
+                          <td className={styles.cAccion}>
+                            <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                              <Link
+                                href={`/admin/inmuebles/${i.id}`}
+                                prefetch={false}
+                                className="btn"
+                                data-variant="quiet"
+                                data-size="sm"
+                                aria-label={`Ver ${i.direccionInmueble}`}
+                              >
+                                <ExternalLink aria-hidden="true" />
+                                Detalle
+                              </Link>
+                              <BotonRecordar inmuebleId={i.id} direccion={i.direccionInmueble} />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )}
-        </footer>
+
+          {vista === 'plano' && (
+            <footer className={styles.cajetin} data-seleccion={seleccion ? 'true' : 'false'} aria-live="polite">
+              {seleccion ? (
+                <div className={styles.detalle}>
+                  <Plate torre={seleccion.torre} apto={seleccion.apto} />
+                  <div className={styles.detalleTexto}>
+                    <p className={`t-voz ${styles.pistaNombre}`}>{seleccion.inmueble.direccionInmueble}</p>
+                    <p className="t-nota">{textoFecha(seleccion)}</p>
+                  </div>
+                  <Chip tono={TONO[seleccion.inmueble.estadoPago]} icono={ICONO_CHIP[seleccion.inmueble.estadoPago]}>
+                    {ESTADO_CARTERA_TEXTO[seleccion.inmueble.estadoPago]}
+                  </Chip>
+                  <p className={styles.deuda}>
+                    {seleccion.inmueble.saldoPendiente > 0 ? (
+                      <>
+                        <span className="t-cifra">{pesos(seleccion.inmueble.saldoPendiente)}</span>
+                        <span className="t-nota">por pagar</span>
+                      </>
+                    ) : (
+                      <span className="t-nota">Sin saldo</span>
+                    )}
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                    <Link
+                      href={`/admin/inmuebles/${seleccion.inmueble.id}`}
+                      prefetch={false}
+                      className="btn"
+                      data-variant="secondary"
+                      data-size="sm"
+                    >
+                      Ver detalle
+                    </Link>
+                    {seleccion.inmueble.estadoPago !== 'AL_DIA' && (
+                      <BotonRecordar inmuebleId={seleccion.inmueble.id} direccion={seleccion.inmueble.direccionInmueble} />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="t-nota">Toca un inmueble para ver su estado de cuenta.</p>
+              )}
+            </footer>
+          )}
+        </>
       )}
     </section>
   )

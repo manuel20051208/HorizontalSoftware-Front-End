@@ -215,7 +215,9 @@
     width: 100%;
     max-width: 1200px;
     margin-inline: auto;
-    padding-inline: clamp(1rem, 4vw, 2.5rem);
+    /* Más aire a los lados en pantallas angostas (laptop) para que el contenido
+       no se pegue a los bordes; en el teléfono se mantiene cómodo. */
+    padding-inline: clamp(1.25rem, 5vw, 4rem);
   }
 
   /* Un documento sobre el escritorio: papel con borde tenue, sin sombra */

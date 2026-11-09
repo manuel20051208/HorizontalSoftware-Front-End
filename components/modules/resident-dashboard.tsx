@@ -1,58 +1,94 @@
 'use client'
 
-import { CalendarDays, Check, Download, FileText, Infinity as Siempre, UserCheck, UserPlus } from 'lucide-react'
-import { Aviso, useAviso } from '@/components/ui/notice'
+import {
+  Bell,
+  CalendarDays,
+  Car,
+  Check,
+  CircleAlert,
+  Clock,
+  FileText,
+  UserCheck,
+  UserPlus,
+} from 'lucide-react'
+import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
-import { Plate } from '@/components/ui/plate'
-import { cop, CUOTA } from '@/lib/complex'
+import { fechaLarga, horaLegible, pesos } from '@/lib/api/acciones'
+import {
+  ESTADO_CARTERA_TEXTO,
+  ESTADO_TRANSACCION_TEXTO,
+  type Auto,
+  type EstadoCuenta,
+  type Invitado,
+  type Notificacion,
+  type Pago,
+  type Reserva,
+} from '@/lib/api/tipos'
 import { useHoy } from '@/lib/use-hoy'
 import styles from './resident-dashboard.module.css'
 
 const ACCIONES = [
-  { texto: 'Invitar visitante', icono: UserPlus },
-  { texto: 'Reservar zona común', icono: CalendarDays },
-  { texto: 'Ver mis recibos', icono: FileText },
+  { texto: 'Pagar mi administración', icono: FileText, href: '/residente/pagos' },
+  { texto: 'Invitar un visitante', icono: UserPlus, href: '/residente/invitados' },
+  { texto: 'Reservar una zona común', icono: CalendarDays, href: '/residente/reservas' },
+  { texto: 'Mi auto y parqueadero', icono: Car, href: '/residente/auto' },
 ] as const
 
-const ACTIVIDADES = [
-  {
-    cuando: 'Sáb 14',
-    mes: 'nov',
-    titulo: 'Salón social',
-    esPersona: false,
-    detalle: '4:00 p. m. a 8:00 p. m.',
-    estado: 'Confirmada',
-  },
-  {
-    cuando: 'Hoy',
-    mes: '',
-    titulo: 'Mariana López',
-    esPersona: true,
-    detalle: 'Visita autorizada hasta las 11:00 p. m.',
-    estado: 'Activa',
-  },
-  {
-    cuando: 'Siempre',
-    mes: '',
-    titulo: 'Andrés Rojas',
-    esPersona: true,
-    detalle: 'Autorización permanente',
-    estado: 'Permanente',
-  },
-] as const
+function mes(periodo: string) {
+  const fecha = new Date(`${periodo.slice(0, 10)}T00:00:00Z`)
+  if (Number.isNaN(fecha.getTime())) return periodo
+  const texto = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(fecha)
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
 
-export function ResidentDashboard() {
-  const { mensaje, avisar } = useAviso()
+function fechaHora(valor: string) {
+  if (!valor) return '—'
+  const fecha = new Date(valor)
+  if (Number.isNaN(fecha.getTime())) return valor
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Bogota',
+  }).format(fecha)
+}
+
+export function ResidentDashboard({
+  nombre,
+  cuenta,
+  pagos,
+  invitados,
+  reservas,
+  notificaciones,
+  auto,
+}: {
+  nombre: string
+  cuenta: EstadoCuenta | null
+  pagos: Pago[]
+  invitados: Invitado[]
+  reservas: Reserva[]
+  notificaciones: Notificacion[]
+  auto: Auto | null
+}) {
   const hoy = useHoy()
-  const pendiente = (texto: string) => avisar(`Acción lista para conectar con tu backend: ${texto}`)
+  const liquidacion = cuenta?.liquidacionVigente ?? null
+  const alDia = cuenta?.pazYSalvo === true
+  const pendiente = cuenta?.saldoPendiente ?? 0
+  const activos = invitados.filter((i) => i.vigente).length
+  const ultimosPagos = pagos.slice(0, 3)
+  const avisos = notificaciones.slice(0, 4)
+  const nombreCorto = nombre.split(' ').filter(Boolean)[0] ?? nombre
 
   return (
     <div className={styles.pagina}>
       <header>
-        <h1 className={`t-voz ${styles.saludo}`}>Hola, Santiago</h1>
+        <p className="t-rotulo">{hoy || 'Mi apartamento'}</p>
+        <h1 className={`t-title ${styles.saludo}`}>Hola, {nombreCorto}.</h1>
         <p className={styles.sub}>
-          <strong className="fecha-hoy">{hoy}</strong>
-          Tienes una cuenta de cobro por pagar.
+          {alDia
+            ? 'Tu apartamento está al día. Estas son tus reservas y autorizaciones.'
+            : cuenta
+              ? `Tienes ${pesos(pendiente)} pendientes de administración.`
+              : 'No pudimos cargar el estado de tu cuenta.'}
         </p>
       </header>
 
@@ -63,23 +99,21 @@ export function ResidentDashboard() {
             <div className={styles.cuerpo}>
               <p className={styles.tipo}>Cuenta de cobro</p>
               <h2 id="cuenta-titulo" className={`t-voz ${styles.concepto}`}>
-                Administración de noviembre
+                {liquidacion ? `Administración de ${mes(liquidacion.periodo)}` : cuenta ? 'Sin liquidación vigente' : 'Cuenta no disponible'}
               </h2>
-              <p className={`t-hero ${styles.importe}`}>{cop(CUOTA)}</p>
+              <p className={`t-hero ${styles.importe}`}>{liquidacion ? pesos(liquidacion.total) : '—'}</p>
               <dl className={styles.datos}>
                 <div>
                   <dt>Vence</dt>
-                  <dd>10 de noviembre</dd>
+                  <dd>{fechaLarga(liquidacion?.fechaLimite ?? cuenta?.liquidacionVigente?.fechaLimite)}</dd>
                 </div>
                 <div>
                   <dt>Apartamento</dt>
-                  <dd>
-                    <Plate torre="A" apto={302} />
-                  </dd>
+                  <dd>{cuenta?.direccionInmueble ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt>Coeficiente</dt>
-                  <dd>0,5051&nbsp;%</dd>
+                  <dt>Estado</dt>
+                  <dd>{cuenta ? ESTADO_CARTERA_TEXTO[cuenta.estadoPago] : '—'}</dd>
                 </div>
               </dl>
             </div>
@@ -87,16 +121,10 @@ export function ResidentDashboard() {
             <div className={styles.perforacion} aria-hidden="true" />
 
             <div className={styles.talon}>
-              <button
-                type="button"
-                className="btn"
-                data-variant="primary"
-                data-size="lg"
-                onClick={() => pendiente('Pagar con Wompi')}
-              >
-                Pagar {cop(CUOTA)}
-              </button>
-              <p className={styles.talonNota}>Pago seguro con Wompi: PSE, tarjeta o Nequi.</p>
+              <Link href="/residente/pagos" prefetch={false} className="btn" data-variant="primary" data-size="lg">
+                {liquidacion ? `Pagar ${pesos(liquidacion.total)}` : 'Ir a mis pagos'}
+              </Link>
+              <p className={styles.talonNota}>Pago seguro con la pasarela: PSE, tarjeta o Nequi.</p>
             </div>
           </section>
         </div>
@@ -107,18 +135,41 @@ export function ResidentDashboard() {
               Estado de cuenta
             </h2>
             <div className={styles.estadoFila}>
-              <p className={styles.sello}>Paz y salvo</p>
-              <p className="t-nota">Estás al día. Tu último pago fue el 10 de octubre.</p>
+              {cuenta ? (
+                alDia ? (
+                  <p className={styles.sello}>Paz y salvo</p>
+                ) : (
+                  <Chip tono={cuenta.estadoPago === 'VENCIDA' ? 'alert' : 'wait'} icono={Clock}>
+                    {ESTADO_CARTERA_TEXTO[cuenta.estadoPago]}
+                  </Chip>
+                )
+              ) : (
+                <Chip tono="alert" icono={CircleAlert}>
+                  Sin conexión
+                </Chip>
+              )}
+              <p className="t-nota">
+                {cuenta
+                  ? alDia
+                    ? 'No tienes saldo pendiente con la administración.'
+                    : `Saldo pendiente: ${pesos(pendiente)}.`
+                  : 'Vuelve a intentarlo en un momento.'}
+              </p>
             </div>
-            <button
-              type="button"
-              className="btn"
-              data-variant="quiet"
-              onClick={() => pendiente('Descargar paz y salvo')}
-            >
-              <Download aria-hidden="true" />
-              Descargar paz y salvo
-            </button>
+
+            {ultimosPagos.length > 0 && (
+              <ul className={styles.pagos} aria-label="Últimos pagos">
+                {ultimosPagos.map((p) => (
+                  <li key={p.id}>
+                    <span className="t-nota">{fechaLarga(p.fechaPago)}</span>
+                    <strong>{pesos(p.monto)}</strong>
+                    <span className="chip" data-tone={p.estado === 'APROBADO' ? 'ok' : 'wait'}>
+                      {ESTADO_TRANSACCION_TEXTO[p.estado]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <section className={styles.acciones} aria-labelledby="acciones-titulo">
@@ -126,58 +177,127 @@ export function ResidentDashboard() {
               Qué quieres hacer
             </h2>
             <ul>
-              {ACCIONES.map(({ texto, icono: Icono }) => (
+              {ACCIONES.map(({ texto, icono: Icono, href }) => (
                 <li key={texto}>
-                  <button type="button" className={`btn ${styles.accion}`} data-variant="secondary" onClick={() => pendiente(texto)}>
+                  <Link href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant="secondary">
                     <Icono aria-hidden="true" />
                     {texto}
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
+            {auto && (
+              <p className="t-nota">
+                Auto registrado: placa <strong>{auto.placa}</strong>
+                {auto.parqueaderoId ? ` · parqueadero ${auto.parqueaderoId}` : ''}.
+              </p>
+            )}
           </section>
         </div>
       </div>
 
-      <section className={`hoja ${styles.proximas}`} aria-labelledby="proximas-titulo">
-        <header className={styles.proximasCabecera}>
-          <h2 id="proximas-titulo" className="t-section">
-            Reservas e invitaciones
-          </h2>
-          <p className="t-nota">4 invitados registrados, 2 activos hoy</p>
-        </header>
-        <ul>
-          {ACTIVIDADES.map((a) => (
-            <li key={a.titulo} className={styles.actividad}>
-              <p className={styles.cuando}>
-                {a.cuando}
-                {a.mes && <span className={styles.mes}>{a.mes}</span>}
+      <div className={styles.inferior}>
+        <section className={`hoja ${styles.proximas}`} aria-labelledby="proximas-titulo">
+          <header className={styles.proximasCabecera}>
+            <div>
+              <h2 id="proximas-titulo" className="t-section">
+                Reservas e invitaciones
+              </h2>
+              <p className="t-nota">
+                {reservas.length} {reservas.length === 1 ? 'reserva' : 'reservas'} · {activos} de {invitados.length}{' '}
+                invitados con autorización vigente
               </p>
-              <div>
-                <h3 className={a.esPersona ? `t-voz ${styles.persona}` : styles.lugar}>{a.titulo}</h3>
-                <p className="t-nota">{a.detalle}</p>
-              </div>
-              {a.estado === 'Confirmada' && (
-                <Chip tono="ok" icono={Check}>
-                  Confirmada
-                </Chip>
-              )}
-              {a.estado === 'Activa' && (
-                <Chip tono="info" icono={UserCheck}>
-                  Activa
-                </Chip>
-              )}
-              {a.estado === 'Permanente' && (
-                <Chip tono="neutral" icono={Siempre}>
-                  Permanente
-                </Chip>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+            </div>
+            <Link href="/residente/reservas" prefetch={false} className="btn" data-variant="quiet" data-size="sm">
+              Gestionar
+            </Link>
+          </header>
 
-      <Aviso mensaje={mensaje} />
+          {reservas.length === 0 && invitados.length === 0 ? (
+            <p className={styles.vacio}>No tienes reservas ni invitados registrados todavía.</p>
+          ) : (
+            <ul>
+              {reservas.slice(0, 3).map((r) => (
+                <li key={`reserva-${r.id}`} className={styles.actividad}>
+                  <p className={styles.cuando}>
+                    {horaLegible(r.horaInicio)}
+                    <span className={styles.mes}>hasta {horaLegible(r.horaFin)}</span>
+                  </p>
+                  <div>
+                    <h3 className={styles.lugar}>{r.nombreZonaComun}</h3>
+                    <p className="t-nota">{r.direccionInmueble}</p>
+                  </div>
+                  {r.enCurso ? (
+                    <Chip tono="info" icono={Clock}>
+                      En curso
+                    </Chip>
+                  ) : (
+                    <Chip tono="ok" icono={Check}>
+                      Confirmada
+                    </Chip>
+                  )}
+                </li>
+              ))}
+              {invitados.slice(0, 3).map((i) => (
+                <li key={`invitado-${i.id}`} className={styles.actividad}>
+                  <p className={styles.cuando}>
+                    {i.vigente ? 'Visita' : 'Inactiva'}
+                    <span className={styles.mes}>{i.venceAutorizacion ? fechaLarga(i.venceAutorizacion) : 'Sin vencimiento'}</span>
+                  </p>
+                  <div>
+                    <h3 className={`t-voz ${styles.persona}`}>{i.nombreCompleto}</h3>
+                    <p className="t-nota">Documento {i.identificacion}</p>
+                  </div>
+                  {i.vigente ? (
+                    <Chip tono="info" icono={UserCheck}>
+                      Autorizada
+                    </Chip>
+                  ) : (
+                    <Chip tono="neutral" icono={Clock}>
+                      Inactiva
+                    </Chip>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className={`hoja ${styles.proximas}`} aria-labelledby="avisos-titulo">
+          <header className={styles.proximasCabecera}>
+            <div>
+              <h2 id="avisos-titulo" className="t-section">
+                Avisos de la administración
+              </h2>
+              <p className="t-nota">Mensajes recibidos en tu cuenta</p>
+            </div>
+            <Link href="/residente/notificaciones" prefetch={false} className="btn" data-variant="quiet" data-size="sm">
+              Ver todos
+            </Link>
+          </header>
+
+          {avisos.length === 0 ? (
+            <p className={styles.vacio}>
+              <Bell aria-hidden="true" />
+              No tienes avisos todavía.
+            </p>
+          ) : (
+            <ul>
+              {avisos.map((n) => (
+                <li key={n.id} className={styles.aviso}>
+                  <div>
+                    <p>{n.mensaje}</p>
+                    <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
+                  </div>
+                  <span className="chip" data-tone="info">
+                    {n.tipoNotificacion}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

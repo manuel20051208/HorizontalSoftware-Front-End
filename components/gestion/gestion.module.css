@@ -1,0 +1,638 @@
+/* Piezas compartidas por las pantallas conectadas al backend. */
+
+.pagina {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.volver {
+  justify-self: start;
+  margin: 0 0 -0.75rem -0.625rem;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+}
+
+.titulo {
+  max-width: 44rem;
+}
+
+.sub {
+  margin-top: 0.75rem;
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+}
+
+.accionesCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+/* ---------- Paneles, listas y tablas ---------- */
+
+.panel {
+  padding: 1.5rem;
+}
+
+.panelCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tablaMarco {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla th {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--linea-fuerte);
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--linea);
+  vertical-align: middle;
+}
+
+.tabla th:first-child,
+.tabla td:first-child {
+  padding-left: 0;
+}
+
+.tabla th:last-child,
+.tabla td:last-child {
+  padding-right: 0;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.derecha {
+  text-align: right !important;
+}
+
+.ahora {
+  white-space: nowrap;
+}
+
+.sinDato {
+  color: var(--tinta-2);
+}
+
+.nombre {
+  display: block;
+  font-size: 1.0625rem;
+}
+
+.nota {
+  display: block;
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+}
+
+/* ---------- Filtros ---------- */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.grupoFiltro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.filtro {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.875rem;
+  border: 1.5px solid var(--linea);
+  border-radius: 999px;
+  background: var(--papel);
+  color: var(--tinta);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.filtro:hover {
+  border-color: var(--sello);
+}
+
+.filtro[aria-current='page'] {
+  border-color: var(--tinta);
+  background: var(--tinta);
+  color: #ffffff;
+}
+
+@media (pointer: coarse) {
+  .filtro {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Formularios ---------- */
+
+/* El formulario vive dentro de un Panel, que ya es la tarjeta y pone el padding:
+   no lleva su propia tarjeta ni padding (evita la tarjeta-dentro-de-tarjeta). */
+.formulario {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.formularioEstrecho {
+  max-width: 40rem;
+}
+
+.seccion {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.seccion + .seccion {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linea);
+}
+
+.leyenda {
+  margin-bottom: 0.875rem;
+  padding: 0;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.rejillaTres {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.ancho {
+  grid-column: 1 / -1;
+}
+
+.grupo {
+  display: grid;
+  align-content: start;
+  gap: 0.375rem;
+}
+
+.etiqueta {
+  color: var(--tinta);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.opcional {
+  color: var(--tinta-2);
+  font-weight: 500;
+}
+
+.entrada {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 0.875rem;
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: var(--radio-control);
+  background: var(--papel);
+  color: var(--tinta);
+  font: inherit;
+}
+
+textarea.entrada {
+  min-height: 7rem;
+  padding-block: 0.625rem;
+  resize: vertical;
+}
+
+.entrada:focus {
+  border-color: var(--sello);
+}
+
+.entrada[aria-invalid='true'] {
+  border-color: var(--alerta);
+}
+
+.entrada:disabled {
+  background: var(--concreto);
+  color: var(--tinta-2);
+  cursor: not-allowed;
+}
+
+.ayudaCampo {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.errorCampo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  color: var(--alerta);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.errorCampo svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+}
+
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linea);
+}
+
+/* Formularios de una sola fila dentro de un panel */
+.enLinea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.enLinea .grupo {
+  flex: 1 1 10rem;
+}
+
+.enLinea .btn {
+  flex: none;
+}
+
+/* ---------- Mensajes ---------- */
+
+.problema {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radio-control);
+  background: var(--alerta-tinte);
+  color: var(--alerta);
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.problema svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+.confirmacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radio-control);
+  background: var(--ok-tinte);
+  color: var(--ok);
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.confirmacion svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+.vacio {
+  padding: 1.5rem 0 0.75rem;
+  color: var(--tinta-2);
+  text-align: center;
+}
+
+/* Resultado de un botón de fila: se queda debajo, sin mover la tabla */
+.accionForm {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+}
+
+.errorFila {
+  max-width: 14rem;
+  color: var(--alerta);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.okFila {
+  max-width: 14rem;
+  color: var(--ok);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: right;
+}
+
+/* ---------- Cifras y tarjetas ---------- */
+
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+}
+
+.cifra {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-documento);
+  background: var(--papel);
+}
+
+.cifra dt {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.cifra dd {
+  font-size: 1.5rem;
+  font-weight: 720;
+  font-stretch: 108%;
+  line-height: 1.1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.cifra .detalle {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* Un dd que lleva un chip de estado, no una cifra: no necesita el tamaño grande */
+.cifra dd.valorChip {
+  font-size: 1.125rem;
+}
+
+/* ---------- Lista de definiciones ---------- */
+
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+}
+
+.datos div {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.datos dt {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.datos dd {
+  font-weight: 650;
+}
+
+/* ---------- Aviso de estado de una consulta ---------- */
+
+.consulta {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radio-control);
+  background: var(--concreto);
+}
+
+/* Dentro de una ficha, la separación la da el gap de la rejilla, no el margen */
+.consulta .panelCabecera {
+  margin-bottom: 0;
+}
+
+.consulta[data-permitido='true'] {
+  background: var(--ok-tinte);
+}
+
+.consulta[data-permitido='false'] {
+  background: var(--alerta-tinte);
+}
+
+/* ---------- Utilidades de composición (reemplazan estilos sueltos) ---------- */
+
+/* Un campo dentro de la barra de filtros: crece pero no se desборда */
+.filtroCampo {
+  flex: 1 1 11rem;
+  max-width: 14rem;
+}
+
+/* Nota corta con un ícono al inicio (pies de página, avisos en línea) */
+.notaIcono {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.notaIcono svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.notaSuelta {
+  margin-top: 0.75rem;
+}
+
+.vacioIcono {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.4rem;
+  vertical-align: -0.15em;
+}
+
+/* Lista con viñetas (reglas de reserva, errores de validación) */
+.lista {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.125rem;
+  list-style: disc;
+}
+
+/* Grupo de casillas (zonas que aplican a una regla o a un inmueble) */
+.checks {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.check input {
+  flex: none;
+}
+
+.checkNombre {
+  font-weight: 600;
+}
+
+/* Varias fichas de regla, una bajo otra */
+.listaReglas {
+  display: grid;
+  gap: 1.25rem;
+}
+
+/* Acciones alineadas a la derecha dentro de una celda de tabla */
+.celdaAccion .accionesCabecera {
+  justify-content: flex-end;
+}
+
+/* ---------- Pantallas angostas ---------- */
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 1.25rem 1rem;
+  }
+
+  .rejilla,
+  .rejillaTres {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pie :global(.btn) {
+    flex: 1;
+  }
+
+  .enLinea .btn {
+    flex: 1 1 100%;
+  }
+
+  /* Los filtros se apilan y sus controles ocupan el ancho */
+  .filtroCampo {
+    max-width: none;
+  }
+
+  .filtros :global(.btn) {
+    flex: 1 1 100%;
+  }
+
+  /* Las tablas marcadas con data-cards dejan de desbordarse: cada fila se
+     vuelve una tarjeta con etiquetas. Las demás conservan el scroll lateral. */
+  .tabla[data-cards] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tabla[data-cards],
+  .tabla[data-cards] tbody {
+    display: block;
+  }
+
+  .tabla[data-cards] tr {
+    display: grid;
+    gap: 0.4rem 0.875rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .tabla[data-cards] tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .tabla[data-cards] td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .tabla[data-cards] td.derecha {
+    text-align: left !important;
+  }
+
+  /* El nombre de la columna, tomado del encabezado, antes del valor */
+  .tabla[data-cards] td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--tinta-2);
+    font-size: 0.8125rem;
+    font-weight: 650;
+  }
+
+  /* La celda principal (el nombre) ocupa su propia línea, sin etiqueta */
+  .tabla[data-cards] td.celdaPrincipal {
+    display: block;
+  }
+
+  .tabla[data-cards] td.celdaPrincipal::before {
+    content: none;
+  }
+
+  /* La celda de acciones: botones a la derecha, sin etiqueta */
+  .tabla[data-cards] td.celdaAccion {
+    justify-content: flex-end;
+  }
+
+  .tabla[data-cards] td.celdaAccion::before {
+    content: none;
+  }
+
+  .tabla[data-cards] td.celdaAccion .accionesCabecera {
+    width: 100%;
+  }
+}

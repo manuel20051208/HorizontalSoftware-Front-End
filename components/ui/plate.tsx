@@ -1,10 +1,9 @@
-import type { Torre } from '@/lib/complex'
-
 /**
  * La dirección de una unidad. El apartamento 402 solo existe con su torre,
  * así que ambas viajan juntas y se leen igual en todos los módulos.
+ * La torre llega como texto porque el backend puede nombrarla con cualquier letra.
  */
-export function Plate({ torre, apto }: { torre: Torre; apto: number }) {
+export function Plate({ torre, apto }: { torre: string; apto: number }) {
   return (
     <span className="plate">
       <span className="sr-only">

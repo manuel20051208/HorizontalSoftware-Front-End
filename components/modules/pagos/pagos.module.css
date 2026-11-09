@@ -1,0 +1,485 @@
+/* Pagos del residente — UI de app: tarjeta de saldo, pago y historial. */
+
+.pagina {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.volver {
+  justify-self: start;
+  margin-left: -0.5rem;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+}
+
+.titulo {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.sub {
+  margin-top: 0.3rem;
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 1.75rem);
+  align-items: start;
+}
+
+/* ---------- Tarjeta hero: el saldo ---------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.25rem;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border-radius: 20px;
+  background: linear-gradient(150deg, var(--sello) 0%, var(--sello-hondo) 100%);
+  color: #fff;
+  box-shadow: 0 20px 34px -14px rgb(74 53 201 / 0.55);
+}
+
+/* brillo decorativo, discreto */
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -70px;
+  top: -70px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.08);
+  pointer-events: none;
+}
+
+.heroOk {
+  background: linear-gradient(150deg, #1c6e46 0%, #0f4f30 100%);
+  box-shadow: 0 20px 34px -14px rgb(23 98 60 / 0.5);
+}
+
+.heroLabel {
+  position: relative;
+  color: rgb(255 255 255 / 0.82);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.heroMonto {
+  position: relative;
+  font-size: clamp(2.75rem, 9vw, 3.75rem);
+  font-weight: 820;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.heroMeta {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin-top: 1rem;
+  color: rgb(255 255 255 / 0.88);
+  font-size: 0.9375rem;
+}
+
+.heroMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.heroMeta svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.okBadge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.5rem;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.16);
+}
+
+.okBadge svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.heroNota {
+  position: relative;
+  margin-top: 0.35rem;
+  color: rgb(255 255 255 / 0.85);
+  line-height: 1.4;
+}
+
+/* ---------- Form de pago dentro del hero ---------- */
+
+.form {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.formLabel {
+  color: rgb(255 255 255 / 0.82);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.metodos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.metodo {
+  position: relative;
+  display: block;
+}
+
+.metodo input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.metodoCara {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 0.4rem;
+  border: 1.5px solid rgb(255 255 255 / 0.35);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+  font-weight: 650;
+  text-align: center;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.metodo input:checked + .metodoCara {
+  border-color: #fff;
+  background: #fff;
+  color: var(--sello-hondo);
+}
+
+.metodo input:focus-visible + .metodoCara {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.cta {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 0.25rem;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--sello-hondo);
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.cta:hover {
+  background: rgb(255 255 255 / 0.9);
+}
+
+.cta:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.formError {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.16);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.formError svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.1rem;
+}
+
+.seguro {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 0.875rem;
+}
+
+.seguro svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.wompiPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.wompi {
+  height: 1.2rem;
+  width: auto;
+}
+
+/* ---------- Desglose ---------- */
+
+.tarjeta {
+  padding: clamp(1.25rem, 3vw, 1.6rem);
+}
+
+.tarjetaTitulo {
+  font-size: 1.125rem;
+  font-weight: 720;
+}
+
+.tarjetaConcepto {
+  margin-top: 0.15rem;
+  margin-bottom: 0.9rem;
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+}
+
+.fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--linea);
+}
+
+.fila:first-of-type {
+  border-top: 0;
+}
+
+.filaLabel {
+  color: var(--tinta-2);
+}
+
+.filaValor {
+  font-weight: 650;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.filaTotal {
+  margin-top: 0.3rem;
+  padding-top: 0.85rem;
+  border-top: 2px solid var(--tinta);
+}
+
+.filaTotal .filaLabel {
+  color: var(--tinta);
+  font-weight: 720;
+}
+
+.filaTotal .filaValor {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.previos {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: var(--espera-tinte);
+  color: var(--espera);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ---------- Historial ---------- */
+
+.historial {
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.histCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.histTitulo {
+  font-size: 1.25rem;
+  font-weight: 740;
+}
+
+.recibos {
+  display: grid;
+}
+
+.recibo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--linea);
+}
+
+.recibo:first-child {
+  border-top: 0;
+}
+
+.recIcono {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--concreto);
+  color: var(--tinta-2);
+}
+
+.recIcono svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.recIcono[data-tono='ok'] {
+  background: var(--ok-tinte);
+  color: var(--ok);
+}
+
+.recIcono[data-tono='wait'] {
+  background: var(--espera-tinte);
+  color: var(--espera);
+}
+
+.recIcono[data-tono='alert'] {
+  background: var(--alerta-tinte);
+  color: var(--alerta);
+}
+
+.recConcepto {
+  font-weight: 680;
+}
+
+.recMeta {
+  margin-top: 0.1rem;
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.recDerecha {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+}
+
+.recMonto {
+  font-weight: 720;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.recAcciones {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.vacio {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--tinta-2);
+  text-align: center;
+}
+
+.vacio svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0.7;
+}
+
+/* ---------- Angosto ---------- */
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .metodos {
+    grid-template-columns: 1fr;
+  }
+
+  .recibo {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'icono texto'
+      'icono derecha';
+    row-gap: 0.4rem;
+  }
+
+  .recibo > :nth-child(1) {
+    grid-area: icono;
+  }
+  .recibo > :nth-child(2) {
+    grid-area: texto;
+  }
+  .recibo > :nth-child(3) {
+    grid-area: derecha;
+    justify-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta,
+  .metodoCara {
+    transition:
+      background 0.12s ease,
+      transform 0.08s ease;
+  }
+
+  .cta:active {
+    transform: translateY(1px);
+  }
+}

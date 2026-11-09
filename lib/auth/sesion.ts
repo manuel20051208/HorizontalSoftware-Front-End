@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
-import { llamarApi, type Resultado } from './api'
+import { llamarApi, type MetodoHttp, type Resultado } from './api'
 import { COOKIE_ACCESS, MODULOS, type Modulo } from './config'
 import { leerToken } from './token'
 
@@ -25,7 +25,7 @@ export const requerirSesion = cache(async (modulo: Modulo) => {
 export async function apiConSesion<T>(
   modulo: Modulo,
   ruta: string,
-  opciones: { body?: unknown; metodo?: 'GET' | 'POST' | 'PATCH' } = {},
+  opciones: { body?: unknown; metodo?: MetodoHttp } = {},
 ): Promise<Resultado<T>> {
   await requerirSesion(modulo)
   const token = (await cookies()).get(COOKIE_ACCESS)?.value
