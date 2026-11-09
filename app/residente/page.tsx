@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { ResidentDashboard } from '@/components/modules/resident-dashboard'
-import { AppShell } from '@/components/shell/app-shell'
 import type {
   Auto,
   EstadoCuenta,
@@ -45,16 +44,14 @@ export default async function ResidentPage() {
   const auto = autoR.ok ? autoR.datos : null
 
   return (
-    <AppShell usuario={{ nombre, rol: 'Residente' }}>
-      <ResidentDashboard
-        nombre={nombre}
-        cuenta={cuenta}
-        pagos={pagos}
-        invitados={invitados}
-        reservas={reservas}
-        notificaciones={notificaciones}
-        auto={auto}
-      />
-    </AppShell>
+    <ResidentDashboard
+      nombre={nombre}
+      cuenta={cuenta}
+      pagos={pagos}
+      invitados={invitados}
+      reservas={reservas}
+      notificaciones={notificaciones}
+      auto={auto}
+    />
   )
 }

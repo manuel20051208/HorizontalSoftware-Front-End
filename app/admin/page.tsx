@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { AdminDashboard } from '@/components/modules/admin-dashboard'
-import { AppShell } from '@/components/shell/app-shell'
 import { hoyBogota, primerDiaDelMes } from '@/lib/api/acciones'
 import type {
   InmuebleResumen,
@@ -15,7 +14,7 @@ import type { Usuario } from '@/lib/usuarios/tipos'
 export const metadata: Metadata = { title: 'Administración' }
 
 export default async function AdminPage() {
-  const { nombre } = await requerirSesion('admin')
+  await requerirSesion('admin')
   const periodo = primerDiaDelMes(hoyBogota())
 
   const [resumenR, inmueblesR, pagosR, inactivosR, notificacionesR] = await Promise.all([
@@ -56,15 +55,13 @@ export default async function AdminPage() {
       : []
 
   return (
-    <AppShell usuario={{ nombre, rol: 'Administrador' }}>
-      <AdminDashboard
-        resumen={resumen}
-        inmuebles={inmuebles}
-        pagos={pagos}
-        usuariosInactivos={usuariosInactivos}
-        notificaciones={notificaciones}
-        resumenError={!resumenR.ok}
-      />
-    </AppShell>
+    <AdminDashboard
+      resumen={resumen}
+      inmuebles={inmuebles}
+      pagos={pagos}
+      usuariosInactivos={usuariosInactivos}
+      notificaciones={notificaciones}
+      resumenError={!resumenR.ok}
+    />
   )
 }

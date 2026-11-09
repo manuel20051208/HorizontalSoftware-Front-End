@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BotonAccion } from '@/components/gestion/acciones-cliente'
 import { EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
-import { AppShell } from '@/components/shell/app-shell'
 import gestion from '@/components/gestion/gestion.module.css'
 import { horaLegible } from '@/lib/api/acciones'
 import type { Acceso, Anfitrion, Duenos, InvitadoConsulta, Reserva } from '@/lib/api/tipos'
@@ -16,7 +15,7 @@ export const metadata: Metadata = { title: 'Portería' }
 type Props = { searchParams: Promise<{ identificacion?: string; autoId?: string; inmuebleId?: string }> }
 
 export default async function SecurityPage({ searchParams }: Props) {
-  const { nombre } = await requerirSesion('vigilante')
+  await requerirSesion('vigilante')
   const params = await searchParams
 
   const identificacion = /^\d+$/.test(params.identificacion ?? '') ? Number(params.identificacion) : 0
@@ -55,8 +54,7 @@ export default async function SecurityPage({ searchParams }: Props) {
   const duenos = duenosR?.ok ? duenosR.datos : null
 
   return (
-    <AppShell usuario={{ nombre, rol: 'Vigilante' }}>
-      <div className={gestion.pagina}>
+    <div className={gestion.pagina}>
         <header className={gestion.cabecera}>
           <div className={gestion.titulo}>
             <h1 className="t-title">Portería</h1>
@@ -284,7 +282,6 @@ export default async function SecurityPage({ searchParams }: Props) {
             </div>
           )}
         </Panel>
-      </div>
-    </AppShell>
+    </div>
   )
 }
