@@ -1,0 +1,280 @@
+.pagina {
+  display: grid;
+  gap: clamp(1.75rem, 3.5vw, 2.75rem);
+}
+
+/* ---------- Saludo: la voz de la comunidad ---------- */
+
+.saludo {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.sub {
+  margin-top: 0.75rem;
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+}
+
+.sub strong {
+  color: var(--tinta);
+  font-weight: 650;
+}
+
+.principal {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
+/* ---------- Cuenta de cobro ---------- */
+
+/* La sombra va en el marco: así sigue la silueta con muescas que recorta la máscara */
+.cuentaMarco {
+  filter: drop-shadow(0 18px 22px rgb(27 21 72 / 0.1)) drop-shadow(0 2px 3px rgb(27 21 72 / 0.12));
+}
+
+.cuenta {
+  --talon: 7.25rem;
+  --muesca: 0.875rem;
+  border-radius: 14px;
+  background: var(--papel);
+  -webkit-mask:
+    radial-gradient(circle var(--muesca) at 0 calc(100% - var(--talon)), #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--muesca) at 100% calc(100% - var(--talon)), #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--muesca) at 0 calc(100% - var(--talon)), #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--muesca) at 100% calc(100% - var(--talon)), #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+.cuerpo {
+  padding: 1.75rem 1.75rem 1.5rem;
+}
+
+.tipo {
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.concepto {
+  margin-top: 0.25rem;
+  font-size: clamp(1.375rem, 3vw, 1.75rem);
+  line-height: 1.2;
+}
+
+.importe {
+  margin-top: 1.25rem;
+  font-size: clamp(3rem, 6.6vw, 4rem);
+  font-stretch: 118%;
+}
+
+.datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin-top: 1.5rem;
+}
+
+.datos dt {
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+}
+
+.datos dd {
+  margin-top: 0.25rem;
+  font-weight: 650;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.perforacion {
+  margin-inline: 1.25rem;
+  border-top: 2px dashed rgb(27 21 72 / 0.28);
+}
+
+.talon {
+  display: grid;
+  align-content: center;
+  gap: 0.5rem;
+  height: var(--talon);
+  padding-inline: 1.75rem;
+}
+
+.talonNota {
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* ---------- Columna lateral: sin tarjetas, texto sobre el escritorio ---------- */
+
+.lateral {
+  display: grid;
+  gap: 2rem;
+}
+
+.estado {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.estadoFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* El sello de la administración: el único elemento rotado de toda la interfaz */
+.sello {
+  padding: 0.5rem 1rem;
+  border: 3px double var(--sello);
+  border-radius: 8px;
+  color: var(--sello);
+  font-size: 1.375rem;
+  font-weight: 800;
+  font-stretch: 118%;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+}
+
+.estadoFila p:last-child {
+  max-width: 16rem;
+}
+
+.acciones {
+  display: grid;
+  gap: 0.875rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--linea);
+}
+
+.acciones ul {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.accion {
+  width: 100%;
+  min-height: 52px;
+  justify-content: flex-start;
+  font-size: 1rem;
+}
+
+/* ---------- Reservas e invitaciones ---------- */
+
+.proximas {
+  padding: 1.5rem;
+}
+
+.proximasCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.actividad {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 1.125rem;
+  border-top: 1px solid var(--linea);
+}
+
+.cuando {
+  font-size: 1.375rem;
+  font-weight: 720;
+  font-stretch: 115%;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.mes {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-stretch: 100%;
+  letter-spacing: 0;
+}
+
+.lugar {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-stretch: 106%;
+  line-height: 1.25;
+}
+
+.persona {
+  font-size: 1.125rem;
+}
+
+/* ---------- Pantallas angostas ---------- */
+
+@media (max-width: 880px) {
+  .principal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .cuerpo {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .talon {
+    padding-inline: 1.25rem;
+  }
+
+  /* Con cifras tan anchas, el importe necesita estrecharse para caber en el papel */
+  .importe {
+    font-stretch: 102%;
+  }
+
+  .proximas {
+    padding: 1.25rem 1rem;
+  }
+
+  .actividad {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'cuando cuando'
+      'texto estado';
+    gap: 0.5rem 1rem;
+  }
+
+  .actividad > :nth-child(1) {
+    grid-area: cuando;
+  }
+  .actividad > :nth-child(2) {
+    grid-area: texto;
+  }
+  .actividad > :nth-child(3) {
+    grid-area: estado;
+  }
+
+  .cuando {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+  }
+
+  .mes {
+    margin-top: 0;
+  }
+}

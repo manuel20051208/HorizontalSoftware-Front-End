@@ -1,0 +1,45 @@
+.region {
+  position: fixed;
+  inset-inline: 0;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  padding-inline: 1rem;
+  pointer-events: none;
+}
+
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  max-width: 34rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  background: var(--tinta);
+  color: #ffffff;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  box-shadow: 0 12px 32px -12px rgb(27 21 72 / 0.6);
+  pointer-events: auto;
+  animation: sube 0.22s ease-out both;
+}
+
+.aviso svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--lampara);
+}
+
+@keyframes sube {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

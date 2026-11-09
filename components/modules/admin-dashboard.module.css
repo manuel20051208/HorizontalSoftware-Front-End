@@ -1,0 +1,268 @@
+.pagina {
+  display: grid;
+  gap: clamp(1.75rem, 3.5vw, 2.75rem);
+}
+
+/* ---------- Encabezado ---------- */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+}
+
+.titulo {
+  max-width: 38rem;
+}
+
+.sub {
+  margin-top: 0.75rem;
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+}
+
+.sub strong {
+  color: var(--tinta);
+  font-weight: 650;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+/* ---------- Plano + resumen ---------- */
+
+.principal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+/* El resumen no va en tarjeta: es texto sobre el escritorio */
+.resumen {
+  display: grid;
+  gap: 1.75rem;
+  padding-top: 0.25rem;
+}
+
+.rotulo {
+  color: var(--tinta-2);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Más angosto que la portada para caber en la columna del resumen */
+.hero {
+  margin-top: 0.5rem;
+  font-size: clamp(3rem, 4.4vw, 3.75rem);
+  font-stretch: 112%;
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  color: var(--ok);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.delta svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.cifra {
+  padding-block: 1.125rem;
+  border-top: 1px solid var(--linea);
+}
+
+.cifra dt {
+  color: var(--tinta-2);
+  font-weight: 600;
+}
+
+.cifra dd:nth-of-type(1) {
+  margin-top: 0.25rem;
+}
+
+.cifra dd + dd {
+  margin-top: 0.125rem;
+}
+
+/* ---------- Comunicados y pagos ---------- */
+
+.inferior {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.panel {
+  padding: 1.5rem;
+}
+
+.panelCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.comunicado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-top: 1px solid var(--linea);
+}
+
+.comunicadoTitulo {
+  margin-bottom: 0.25rem;
+  font-size: 1.0625rem;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla th {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--linea-fuerte);
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--linea);
+  vertical-align: middle;
+}
+
+.tabla th:first-child,
+.tabla td:first-child {
+  padding-left: 0;
+}
+
+.tabla th:last-child,
+.tabla td:last-child {
+  padding-right: 0;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabla th.derecha,
+.tabla td.derecha {
+  text-align: right;
+}
+
+/* ---------- Pantallas angostas ---------- */
+
+@media (max-width: 1000px) {
+  .principal,
+  .inferior {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Bajo el plano, el resumen usa dos columnas para no alargar la página */
+  .resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+    align-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .resumen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .acciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  /* En dos columnas el texto puede partirse en dos líneas */
+  .accion {
+    padding-block: 0.5rem;
+    line-height: 1.2;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .panel {
+    padding: 1.25rem 1rem;
+  }
+
+  .tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tabla,
+  .tabla tbody {
+    display: block;
+  }
+
+  .tabla tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'nombre valor'
+      'placa estado'
+      'cuando cuando';
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .tabla tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .tabla td,
+  .tabla td:first-child,
+  .tabla td:last-child {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .cNombre {
+    grid-area: nombre;
+  }
+  .cValor {
+    grid-area: valor;
+  }
+  .cPlaca {
+    grid-area: placa;
+  }
+  .cEstado {
+    grid-area: estado;
+    justify-self: end;
+  }
+  .cCuando {
+    grid-area: cuando;
+  }
+}

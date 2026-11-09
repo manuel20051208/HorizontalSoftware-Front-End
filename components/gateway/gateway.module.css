@@ -1,0 +1,191 @@
+/* Inicio de sesión: una tarjeta compacta; en pantallas anchas, ilustración a un lado */
+
+.pagina {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.lado {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+/* La tarjeta del acceso */
+.copia {
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.25rem 1.125rem;
+  border-radius: 18px;
+  background: var(--papel);
+  box-shadow:
+    0 0 0 1px var(--linea),
+    0 24px 48px -28px rgb(27 21 72 / 0.3);
+}
+
+/* Logo arriba, en el centro de la pantalla */
+.cabecera {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 1rem 0;
+}
+
+.titulo {
+  font-size: clamp(1.625rem, 7vw, 2rem);
+}
+
+.lead {
+  margin-top: 0.5rem;
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+/* ---------- Módulos: una fila-botón por rol ---------- */
+
+.roles {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.125rem;
+}
+
+.rol {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  border: 1.5px solid var(--linea);
+  border-radius: 12px;
+  color: var(--tinta);
+  text-decoration: none;
+}
+
+.rol:hover,
+.rol:focus-visible {
+  border-color: var(--sello);
+  background: var(--sello-tinte);
+}
+
+.rolIcono {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--tinta-2);
+}
+
+.rol:hover .rolIcono,
+.rol:focus-visible .rolIcono {
+  color: var(--sello);
+}
+
+.rolNombre {
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 720;
+  font-stretch: 112%;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.rolDescripcion {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.chevron {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--tinta-2);
+}
+
+.ayuda {
+  margin-top: 1rem;
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* La ilustración existe solo en pantallas anchas: como fondo de CSS dentro de la
+   consulta de medios, el teléfono no la descarga. */
+.arte {
+  display: none;
+}
+
+@media (min-width: 881px) {
+  .pagina {
+    position: relative;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+  }
+
+  /* El acceso ocupa el lado derecho, por encima de la ilustración */
+  .lado {
+    position: relative;
+    z-index: 1;
+    width: 66%;
+    margin-left: auto;
+    padding: 1.5rem clamp(1.5rem, 4vw, 3.5rem);
+  }
+
+  .cabecera {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 2;
+    padding-top: 1.5rem;
+  }
+
+  /* Tarjeta de vidrio: translúcida, desenfoca lo que hay detrás. Solo en pantallas anchas,
+     donde hay algo detrás; en el teléfono el desenfoque costaría y no se vería. */
+  .copia {
+    padding: 1.75rem 1.5rem 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.65);
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: 0 24px 48px -24px rgb(27 21 72 / 0.35);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .copia {
+      background: rgb(255 255 255 / 0.42);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      backdrop-filter: blur(16px) saturate(1.5);
+    }
+
+    .rol {
+      background: rgb(255 255 255 / 0.4);
+      border-color: rgb(255 255 255 / 0.7);
+    }
+
+    .rol:hover,
+    .rol:focus-visible {
+      background: rgb(236 233 251 / 0.8);
+      border-color: var(--sello);
+    }
+  }
+
+  /* Fondo de toda la página: la ilustración (de fondo blanco) se mezcla con el color de la
+     página con multiply, así el blanco desaparece. Una máscara circular centrada a la
+     izquierda la desvanece hacia la derecha, donde está el login, y el desvanecido cruza
+     la división hasta quedar detrás de la tarjeta. */
+  .arte {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .arte::before {
+    content: '';
+    position: absolute;
+    inset: 0 8% 0 0;
+    background: url('/ciudad-noche.webp') left center / contain no-repeat;
+    mix-blend-mode: multiply;
+    /* Llega hasta detrás de la tarjeta de vidrio y ahí se desvanece */
+    -webkit-mask-image: radial-gradient(ellipse 72% 78% at 38% 50%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 72% 78% at 38% 50%, #000 40%, transparent 100%);
+  }
+}
