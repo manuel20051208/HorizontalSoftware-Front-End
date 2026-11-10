@@ -20,8 +20,8 @@ export function moduloDeRol(rol: unknown): Modulo | undefined {
   return (Object.keys(MODULOS) as Modulo[]).find((m) => MODULOS[m].rol === rol)
 }
 
-/** Back-end Spring Boot. En producción define API_URL. */
-export const API_URL = (process.env.API_URL ?? 'http://localhost:8080').replace(/\/+$/, '')
+/** Back-end Spring Boot. Por defecto el desplegado; define API_URL para apuntar a otro (p. ej. http://localhost:8080). */
+export const API_URL = (process.env.API_URL ?? 'https://horizontal-proyect.duckdns.org').replace(/\/+$/, '')
 
 /** Endpoints que usa el front. El contrato completo está en ENDPOINTS.md del backend. */
 export const RUTAS_API = {

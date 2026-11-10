@@ -17,8 +17,10 @@
   --sello: #4a35c9; /* acciones, enlaces, foco: el violeta del sello de oficina */
   --sello-hondo: #3a27a8; /* hover y pulsado */
   --sello-tinte: #ece9fb;
-  --concreto: #e9e8ee; /* fondo de página */
-  --papel: #ffffff; /* documentos */
+  --concreto: #e9e8ee; /* fondo de página (respaldo bajo la ilustración) */
+  --papel: rgb(255 255 255 / 0.82); /* vidrio sólido: superficies opacas y esmeriladas sobre el fondo */
+  --papel-solido: #ffffff; /* lo que debe seguir opaco (anillos, máscaras, tooltips) */
+  --vidrio-blur: saturate(1.7) blur(16px); /* desenfoque «liquid glass» sobre la ilustración de fondo */
   --lampara: #f5b83d; /* ventana encendida, «ahora» */
 
   /* Líneas: la decorativa se queda tenue; los bordes de controles llegan a 3:1 */
@@ -97,9 +99,15 @@
     background: var(--concreto);
   }
 
+  /* La ilustración de la ciudad es el fondo de toda la app. Va directa en el body
+     (no en un pseudo detrás) para que el color de respaldo no la tape; queda fija al
+     hacer scroll y un velo muy tenue le da algo de contraste sin ocultarla. */
   body {
     min-height: 100dvh;
-    background: var(--concreto);
+    background:
+      radial-gradient(ellipse 130% 105% at 50% 32%, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.85)),
+      url('/ciudad-noche.webp') center center / cover no-repeat fixed,
+      var(--concreto);
     color: var(--tinta);
     font-family: var(--font-sans);
     font-size: 1rem;
@@ -217,7 +225,8 @@
     margin-inline: auto;
     /* Más aire a los lados en pantallas angostas (laptop) para que el contenido
        no se pegue a los bordes; en el teléfono se mantiene cómodo. */
-    padding-inline: clamp(1.25rem, 5vw, 4rem);
+    padding-inline: max(clamp(1.25rem, 5vw, 4rem), env(safe-area-inset-left))
+      max(clamp(1.25rem, 5vw, 4rem), env(safe-area-inset-right));
   }
 
   /* Un documento sobre el escritorio: papel con borde tenue, sin sombra */
@@ -225,6 +234,8 @@
     background: var(--papel);
     border: 1px solid var(--linea);
     border-radius: var(--radio-documento);
+    -webkit-backdrop-filter: var(--vidrio-blur);
+    backdrop-filter: var(--vidrio-blur);
   }
 
   /* ---------- Botones ---------- */
@@ -276,6 +287,8 @@
     background: var(--papel);
     color: var(--tinta);
     border-color: var(--linea-fuerte);
+    -webkit-backdrop-filter: var(--vidrio-blur);
+    backdrop-filter: var(--vidrio-blur);
   }
 
   .btn[data-variant='secondary']:hover {
@@ -322,12 +335,14 @@
     gap: 0.375rem;
     padding: 0.1875rem 0.625rem 0.1875rem 0.5rem;
     border-radius: 999px;
-    background: var(--concreto);
+    background: var(--papel);
     color: var(--tinta);
     font-size: 0.8125rem;
     font-weight: 600;
     line-height: 1.25;
     white-space: nowrap;
+    -webkit-backdrop-filter: var(--vidrio-blur);
+    backdrop-filter: var(--vidrio-blur);
   }
 
   .chip svg {
@@ -369,6 +384,8 @@
     overflow: hidden;
     border-radius: 5px;
     background: var(--papel);
+    -webkit-backdrop-filter: var(--vidrio-blur);
+    backdrop-filter: var(--vidrio-blur);
     box-shadow: inset 0 0 0 1.5px var(--tinta);
     color: var(--tinta);
     font-size: 0.875rem;
@@ -407,6 +424,8 @@
     border: 1.5px solid var(--linea-fuerte);
     border-radius: var(--radio-control);
     color: var(--tinta-2);
+    -webkit-backdrop-filter: var(--vidrio-blur);
+    backdrop-filter: var(--vidrio-blur);
   }
 
   .campo:focus-within {

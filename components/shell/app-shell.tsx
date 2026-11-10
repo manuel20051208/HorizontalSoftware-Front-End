@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
 import { cerrarSesion } from '@/lib/auth/acciones'
 import styles from './app-shell.module.css'
+import { MenuModulos } from './menu-modulos'
 
 function iniciales(nombre: string) {
   return nombre
@@ -16,9 +17,12 @@ function iniciales(nombre: string) {
 
 export function AppShell({
   usuario,
+  menu,
   children,
 }: {
   usuario: { nombre: string; rol: string }
+  /** Módulo cuyo menú horizontal va bajo la barra; portería no lleva (es una sola pantalla). */
+  menu?: 'admin' | 'residente'
   children: React.ReactNode
 }) {
   return (
@@ -57,6 +61,7 @@ export function AppShell({
             </div>
           </div>
         </div>
+        {menu && <MenuModulos modulo={menu} />}
       </header>
 
       <main id="contenido" className={styles.main}>

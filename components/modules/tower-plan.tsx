@@ -15,11 +15,10 @@ import {
 import { enviarRecordatorioForm } from '@/lib/admin/acciones'
 import styles from './tower-plan.module.css'
 
-const TORRES = ['A', 'B', 'C']
-const PISOS = 11
-const APTOS_POR_PISO = 6
-const FILAS = Array.from({ length: PISOS }, (_, i) => PISOS - i)
 const ESTADOS: EstadoCartera[] = ['AL_DIA', 'POR_VENCER', 'VENCIDA', 'SIN_LIQUIDACION']
+// A partir de aquí el plano pasa a pestañas por torre (una a la vez), para no desbordar ni dejar huecos
+const MAX_TORRES_ANCHAS = 3
+const MAX_COLUMNAS_ANCHAS = 20
 const TONO = { AL_DIA: 'ok', POR_VENCER: 'wait', VENCIDA: 'alert', SIN_LIQUIDACION: 'neutral' } as const
 const ICONO_CHIP = { AL_DIA: Check, POR_VENCER: Clock, VENCIDA: CircleAlert, SIN_LIQUIDACION: Clock } as const
 const MARCA = { AL_DIA: 'al-dia', POR_VENCER: 'por-vencer', VENCIDA: 'vencida', SIN_LIQUIDACION: 'sin' } as const
@@ -34,7 +33,7 @@ function partes(direccion: string) {
   const apto = Number(m[2])
   const piso = Math.floor(apto / 100)
   const posicion = apto % 100
-  if (!Number.isFinite(piso) || piso < 1 || posicion < 1 || posicion > APTOS_POR_PISO) return null
+  if (!Number.isFinite(piso) || piso < 1 || piso > 99 || posicion < 1 || posicion > 99) return null
   return { torre: m[1], apto, piso }
 }
 
@@ -92,7 +91,7 @@ function BotonRecordar({ inmuebleId, direccion }: { inmuebleId: number; direccio
 export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
   const [vista, setVista] = useState<Vista>('plano')
   const [filtro, setFiltro] = useState<EstadoCartera | null>(null)
-  const [torreMovil, setTorreMovil] = useState<string>('A')
+  const [torreMovil, setTorreMovil] = useState<string>('')
   const [seleccion, setSeleccion] = useState<Unidad | null>(null)
   const [pista, setPista] = useState<Pista | null>(null)
   const lienzo = useRef<HTMLDivElement>(null)
@@ -116,7 +115,19 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
         a.direccionInmueble.localeCompare(b.direccionInmueble),
     )
   const filasLista = conSaldo.filter((i) => filtro === null || i.estadoPago === filtro)
-  const torres = [...new Set([...TORRES, ...unidades.map((u) => u.torre)])]
+  // Todo se deriva de los inmuebles reales: sin torres/pisos/aptos cableados
+  const torres = [...new Set(unidades.map((u) => u.torre))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  )
+  const aptos = Math.max(1, ...unidades.map((u) => u.apto % 100))
+  const pisosAlto = Math.max(1, ...unidades.map((u) => u.piso))
+  const filas = Array.from({ length: pisosAlto }, (_, i) => pisosAlto - i)
+  const modoTabs = torres.length > MAX_TORRES_ANCHAS || torres.length * aptos > MAX_COLUMNAS_ANCHAS
+  const torreSel = torres.includes(torreMovil) ? torreMovil : (torres[0] ?? '')
+  // Rejilla por variables CSS: columna de piso + un bloque de `aptos` por torre (celdas de tamaño fijo), separados por un hueco
+  const gridAnchos =
+    '1.75rem ' + torres.map(() => `repeat(${aptos}, var(--tam-celda))`).join(' clamp(0.75rem, 3vw, 2.25rem) ')
+  const gridUno = `1.75rem repeat(${aptos}, var(--tam-celda))`
   const esSeleccion = (u: Unidad) => seleccion?.inmueble.id === u.inmueble.id
 
   function mostrarPista(u: Unidad, el: HTMLElement) {
@@ -192,13 +203,18 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
 
           {vista === 'plano' ? (
             <div className={styles.lienzo} ref={lienzo}>
-              <div className={styles.torres} role="group" aria-label="Torre que se muestra">
+              <div
+                className={styles.torres}
+                data-modo={modoTabs ? 'tabs' : 'anchos'}
+                role="group"
+                aria-label="Torre que se muestra"
+              >
                 {torres.map((t) => (
                   <button
                     key={t}
                     type="button"
                     className={styles.torreTab}
-                    aria-pressed={torreMovil === t}
+                    aria-pressed={torreSel === t}
                     onClick={() => setTorreMovil(t)}
                   >
                     Torre {t}
@@ -206,23 +222,36 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
                 ))}
               </div>
 
-              <div className={styles.rejilla}>
+              <div
+                className={styles.rejilla}
+                data-modo={modoTabs ? 'tabs' : 'anchos'}
+                style={
+                  {
+                    '--grid-anchos': gridAnchos,
+                    '--grid-uno': gridUno,
+                  } as CSSProperties
+                }
+              >
                 <span className={styles.pisoTitulo} aria-hidden="true">
                   Piso
                 </span>
                 {torres.map((t, i) => (
-                  <h3 key={t} className={styles.torreNombre} style={{ '--col': 2 + i * 7 } as CSSProperties}>
+                  <h3
+                    key={t}
+                    className={styles.torreNombre}
+                    style={{ '--col': 2 + i * (aptos + 1), '--span': aptos } as CSSProperties}
+                  >
                     Torre {t}
                   </h3>
                 ))}
 
-                {FILAS.map((piso, fila) => (
+                {filas.map((piso, fila) => (
                   <Fragment key={piso}>
                     <span className={styles.piso} style={{ '--fila': fila + 2 } as CSSProperties} aria-hidden="true">
                       {piso}
                     </span>
                     {torres.flatMap((torre, i) =>
-                      Array.from({ length: APTOS_POR_PISO }, (_, n) => {
+                      Array.from({ length: aptos }, (_, n) => {
                         const apto = piso * 100 + n + 1
                         const u = porId.get(`${torre}-${apto}`)
                         if (!u) {
@@ -232,8 +261,10 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
                               className={styles.celda}
                               data-estado="vacia"
                               data-activa="false"
-                              data-visible-movil={torre === torreMovil ? 'true' : 'false'}
-                              style={{ '--fila': fila + 2, '--col': 2 + i * 7 + n, '--col-movil': 2 + n } as CSSProperties}
+                              data-visible={torre === torreSel ? 'true' : 'false'}
+                              style={
+                                { '--fila': fila + 2, '--col': 2 + i * (aptos + 1) + n, '--col-uno': 2 + n } as CSSProperties
+                              }
                               aria-hidden="true"
                             />
                           )
@@ -246,8 +277,10 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
                             className={styles.celda}
                             data-estado={MARCA[u.inmueble.estadoPago]}
                             data-activa={activa ? 'true' : 'false'}
-                            data-visible-movil={torre === torreMovil ? 'true' : 'false'}
-                            style={{ '--fila': fila + 2, '--col': 2 + i * 7 + n, '--col-movil': 2 + n } as CSSProperties}
+                            data-visible={torre === torreSel ? 'true' : 'false'}
+                            style={
+                              { '--fila': fila + 2, '--col': 2 + i * (aptos + 1) + n, '--col-uno': 2 + n } as CSSProperties
+                            }
                             tabIndex={u.inmueble.estadoPago === 'AL_DIA' ? -1 : 0}
                             aria-label={`${u.inmueble.direccionInmueble}: ${ESTADO_CARTERA_TEXTO[u.inmueble.estadoPago]}`}
                             aria-pressed={esSeleccion(u)}

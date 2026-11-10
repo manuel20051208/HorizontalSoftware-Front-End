@@ -50,6 +50,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
+  // La página ocupa toda la pantalla del teléfono; el CSS respeta la muesca y las
+  // esquinas redondeadas con env(safe-area-inset-*).
+  viewportFit: 'cover',
   themeColor: '#e9e8ee',
 }
 

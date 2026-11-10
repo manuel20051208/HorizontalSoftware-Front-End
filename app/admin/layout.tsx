@@ -6,5 +6,5 @@ import { requerirSesion } from '@/lib/auth/sesion'
 // correrlo aquí y en cada página no repite trabajo.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { nombre } = await requerirSesion('admin')
-  return <AppShell usuario={{ nombre, rol: 'Administrador' }}>{children}</AppShell>
+  return <AppShell usuario={{ nombre, rol: 'Administrador' }} menu="admin">{children}</AppShell>
 }

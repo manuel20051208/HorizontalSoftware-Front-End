@@ -51,6 +51,26 @@
   padding: 1.5rem;
 }
 
+/* En dos columnas, el plano («Cartera del periodo») y el resumen («Recaudo de…»)
+   comparten la misma altura; si una tiene más contenido, scrollea por dentro en
+   vez de alargar la fila. */
+@media (min-width: 1001px) {
+  .principal {
+    align-items: stretch;
+  }
+
+  .principal > * {
+    min-height: 0;
+    max-height: clamp(28rem, 66vh, 44rem);
+    overflow: auto;
+  }
+
+  /* Cuando la tarjeta queda más alta que su contenido, el resumen se mantiene arriba */
+  .resumen {
+    align-content: start;
+  }
+}
+
 .rotulo {
   color: var(--tinta-2);
   font-size: 1rem;

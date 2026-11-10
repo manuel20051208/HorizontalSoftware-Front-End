@@ -2,14 +2,10 @@
 
 import {
   Bell,
-  CalendarDays,
-  Car,
   Check,
   CircleAlert,
   Clock,
-  FileText,
   UserCheck,
-  UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
@@ -26,13 +22,6 @@ import {
 } from '@/lib/api/tipos'
 import { useHoy } from '@/lib/use-hoy'
 import styles from './resident-dashboard.module.css'
-
-const ACCIONES = [
-  { texto: 'Pagar mi administración', icono: FileText, href: '/residente/pagos' },
-  { texto: 'Invitar un visitante', icono: UserPlus, href: '/residente/invitados' },
-  { texto: 'Reservar una zona común', icono: CalendarDays, href: '/residente/reservas' },
-  { texto: 'Mi auto y parqueadero', icono: Car, href: '/residente/auto' },
-] as const
 
 function mes(periodo: string) {
   const fecha = new Date(`${periodo.slice(0, 10)}T00:00:00Z`)
@@ -172,27 +161,12 @@ export function ResidentDashboard({
             )}
           </section>
 
-          <section className={styles.acciones} aria-labelledby="acciones-titulo">
-            <h2 id="acciones-titulo" className="t-section">
-              Qué quieres hacer
-            </h2>
-            <ul>
-              {ACCIONES.map(({ texto, icono: Icono, href }) => (
-                <li key={texto}>
-                  <Link href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant="secondary">
-                    <Icono aria-hidden="true" />
-                    {texto}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {auto && (
-              <p className="t-nota">
-                Auto registrado: placa <strong>{auto.placa}</strong>
-                {auto.parqueaderoId ? ` · parqueadero ${auto.parqueaderoId}` : ''}.
-              </p>
-            )}
-          </section>
+          {auto && (
+            <p className="t-nota">
+              Auto registrado: placa <strong>{auto.placa}</strong>
+              {auto.parqueaderoId ? ` · parqueadero ${auto.parqueaderoId}` : ''}.
+            </p>
+          )}
         </div>
       </div>
 

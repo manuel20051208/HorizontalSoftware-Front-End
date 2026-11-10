@@ -141,6 +141,8 @@
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
+  -webkit-backdrop-filter: var(--vidrio-blur);
+  backdrop-filter: var(--vidrio-blur);
 }
 
 .filtro:hover {
@@ -232,6 +234,8 @@
   background: var(--papel);
   color: var(--tinta);
   font: inherit;
+  -webkit-backdrop-filter: var(--vidrio-blur);
+  backdrop-filter: var(--vidrio-blur);
 }
 
 textarea.entrada {
@@ -388,6 +392,8 @@ textarea.entrada {
   border: 1px solid var(--linea);
   border-radius: var(--radio-documento);
   background: var(--papel);
+  -webkit-backdrop-filter: var(--vidrio-blur);
+  backdrop-filter: var(--vidrio-blur);
 }
 
 .cifra dt {
