@@ -50,7 +50,7 @@ Todos los errores tienen esta forma (`errores` solo aparece en validaciones):
 | Status | Cuándo |
 |---|---|
 | 400 | Cuerpo inválido, parámetro faltante o regla de entrada no cumplida |
-| 401 | Sin token, token vencido/inválido, credenciales o llave de pasarela incorrectas |
+| 401 | Sin token, token vencido/inválido, credenciales incorrectas o firma del evento de la pasarela inválida |
 | 403 | El rol no tiene permiso, o el recurso es de otro inmueble/usuario |
 | 404 | El recurso no existe |
 | 409 | Conflicto de estado (duplicado, pago en estado no válido, zona sin cupo, etc.) |
@@ -184,7 +184,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 
 - `EstadoCuenta`: `{inmuebleId, direccionInmueble, estadoPago, saldoPendiente, pazYSalvo, liquidacionVigente}`.
 - **Pagar:** `metodoPago` es `PSE`, `TARJETA` o `NEQUI`. **El valor lo calcula el servidor** (saldo pendiente); el cliente nunca envía el monto. El pago nace `PENDIENTE` y el front debe **redirigir al residente a `urlCheckout`**. El resultado llega después por webhook (ver sección 8); el front puede consultarlo con `GET /api/pagos/estado/{referencia}`.
-- Errores típicos: 403 cuenta inactiva; 409 sin saldo pendiente o pasarela no configurada.
+- Errores típicos: 403 cuenta inactiva; 409 sin saldo pendiente, pasarela no configurada o sin secreto de integridad en el servidor.
 
 ### 5.2 Invitados y auto
 | Método | Ruta | Cuerpo | Respuesta |
@@ -238,9 +238,19 @@ Un residente solo accede a pagos de su propio inmueble (403 si no).
 
 | Método | Ruta | Acceso | Cuerpo | Respuesta |
 |---|---|---|---|---|
-| POST | `/api/pasarela/webhook` | Público + header `X-Api-Key` | `{referencia, estado}` (`APROBADO` o `RECHAZADO`) | 200 `Pago` |
+| POST | `/api/pasarela/webhook` | Público + firma del evento | Evento de Wompi (`{event, data:{transaction}, signature:{properties, checksum}, timestamp, ...}`) | 200 sin cuerpo |
 
-Lo llama la pasarela, **no el front-end**. No usa Bearer: se autentica con la llave de la pasarela en `X-Api-Key` (401 si falta o no coincide). Es idempotente: un aviso repetido no cambia nada ni vuelve a notificar. Al aprobar, la liquidación del inmueble queda `AL_DIA` y se notifica el resultado.
+Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como *URL de eventos*: `https://<api>/api/pasarela/webhook`.
+
+- **Autenticidad:** no usa Bearer ni llaves en cabeceras. El back recalcula `signature.checksum` con el secreto de eventos (`PASARELA_EVENTS_SECRET`). Si falta la firma o no coincide responde **401** y no toca ningún pago.
+- **Fuente de verdad:** el contenido del evento no se usa para decidir. El back consulta la transacción en la API de Wompi con la llave privada (`PASARELA_PRIVATE_KEY`) y actúa según lo que diga Wompi:
+  - `APPROVED`, con monto y moneda (`COP`) iguales a los del pago: aprueba. Si no coinciden, el pago queda `PENDIENTE` para revisión manual.
+  - `DECLINED`, `VOIDED` o `ERROR`: rechaza.
+  - `PENDING`: no cambia nada.
+- **Respuestas:** 200 procesado o ignorado (otros tipos de evento, pago ya resuelto); 404 referencia desconocida; 409 secreto de eventos no configurado; 502 la API de Wompi no respondió. Con cualquier respuesta distinta de 200, Wompi reintenta.
+- Es idempotente: un evento repetido no cambia nada ni vuelve a notificar. Al aprobar, la liquidación del inmueble queda `AL_DIA` y se notifica el resultado.
+
+**Checkout (`urlCheckout` de `POST /api/residente/pagos`):** va firmado con `signature:integrity` y, si está configurado `PASARELA_REDIRECT_URL`, lleva `redirect-url` para que Wompi devuelva al residente a esa pantalla del front. Wompi agrega `?id=<idTransaccion>` a esa URL; el front muestra el resultado con `GET /api/pagos/estado/{referencia}`.
 
 ## 9. Vigilante - `/api/vigilante` (todos **VIGILANTE**)
 | Método | Ruta | Respuesta |
@@ -258,7 +268,7 @@ Lo llama la pasarela, **no el front-end**. No usa Bearer: se autentica con la ll
 
 | Rol | Rutas |
 |---|---|
-| Público | `/api/auth/login`, `/refresh`, `/activar`, `/recuperar-contrasena`, `/api/pasarela/webhook` (con `X-Api-Key`) |
+| Público | `/api/auth/login`, `/refresh`, `/activar`, `/recuperar-contrasena`, `/api/pasarela/webhook` (firma de Wompi) |
 | Autenticado | `/api/auth/logout`, `/contrasena`, `/me`, `/api/notificaciones/**` |
 | ADMINISTRADOR | `/api/admin/**` |
 | RESIDENTE | `/api/residente/**` |
