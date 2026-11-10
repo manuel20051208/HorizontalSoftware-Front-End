@@ -153,7 +153,7 @@ export default async function ReservasPage({ searchParams }: Props) {
           <Vacio>No tienes reservas activas.</Vacio>
         ) : (
           <div className={styles.tablaMarco}>
-            <table className={styles.tabla}>
+            <table className={styles.tabla} data-cards>
               <caption className="sr-only">Tus reservas</caption>
               <thead>
                 <tr>
@@ -168,11 +168,11 @@ export default async function ReservasPage({ searchParams }: Props) {
               <tbody>
                 {reservas.map((r) => (
                   <tr key={r.id}>
-                    <td className={`t-voz ${styles.nombre}`}>{r.nombreZonaComun}</td>
-                    <td className={styles.ahora}>
+                    <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`}>{r.nombreZonaComun}</td>
+                    <td className={styles.ahora} data-label="Horario">
                       {horaLegible(r.horaInicio)} a {horaLegible(r.horaFin)}
                     </td>
-                    <td>
+                    <td data-label="Estado">
                       {r.enCurso ? (
                         <span className="chip" data-tone="info">
                           <Clock aria-hidden="true" />
@@ -185,7 +185,7 @@ export default async function ReservasPage({ searchParams }: Props) {
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td className={styles.celdaAccion}>
                       <BotonAccion
                         accion={cancelarReserva.bind(null, r.id)}
                         variante="quiet"

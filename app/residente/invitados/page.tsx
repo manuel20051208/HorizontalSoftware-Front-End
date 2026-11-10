@@ -62,7 +62,7 @@ export default async function InvitadosPage() {
           <Vacio>Todavía no has autorizado a ningún invitado.</Vacio>
         ) : (
           <div className={styles.tablaMarco}>
-            <table className={styles.tabla}>
+            <table className={styles.tabla} data-cards>
               <caption className="sr-only">Invitados autorizados</caption>
               <thead>
                 <tr>
@@ -78,18 +78,18 @@ export default async function InvitadosPage() {
               <tbody>
                 {invitados.map((i) => (
                   <tr key={i.id}>
-                    <td className={`t-voz ${styles.nombre}`}>{i.nombreCompleto}</td>
-                    <td className={styles.ahora}>{i.identificacion}</td>
-                    <td className={`t-nota ${styles.ahora}`}>
+                    <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`}>{i.nombreCompleto}</td>
+                    <td className={styles.ahora} data-label="Identificación">{i.identificacion}</td>
+                    <td className={`t-nota ${styles.ahora}`} data-label="Vence">
                       {i.venceAutorizacion ? fechaLarga(i.venceAutorizacion) : 'Permanente'}
                     </td>
-                    <td>
+                    <td data-label="Estado">
                       <span className="chip" data-tone={i.vigente ? 'ok' : 'neutral'}>
                         {i.vigente ? <UserCheck aria-hidden="true" /> : <Clock aria-hidden="true" />}
                         {i.vigente ? 'Vigente' : 'Inactiva'}
                       </span>
                     </td>
-                    <td>
+                    <td className={styles.celdaAccion}>
                       <BotonAccion
                         accion={alternarInvitado.bind(null, i.id)}
                         variante={i.active ? 'quiet' : 'secondary'}
