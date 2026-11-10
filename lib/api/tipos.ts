@@ -305,9 +305,7 @@ export type GenerarLiquidacion = {
   valorServiciosComunes?: number | null
 }
 export type ConciliarPago = { monto: number; metodoPago: string; referencia?: string | null }
+/** Solo el estado: nombre, URLs y llaves de la pasarela se configuran en el .env del back. */
 export type ConfigurarPasarela = {
-  nombrePasarela: string
-  urlApi: string
-  apiKey: string
   estado: 'ACTIVA' | 'INACTIVA'
 }

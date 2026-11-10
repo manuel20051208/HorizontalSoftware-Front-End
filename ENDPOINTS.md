@@ -165,11 +165,12 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 | POST | `/api/admin/pagos/{id}/anular` | - | 200 `Pago` (solo `PENDIENTE`) |
 | POST | `/api/admin/pagos/{id}/reembolso` | - | 200 `Pago` (solo `APROBADO`) |
 | GET | `/api/admin/pasarela` | - | 200 `Pasarela` |
-| PUT | `/api/admin/pasarela` | `{nombrePasarela, urlApi, apiKey, estado}` | 200 `Pasarela` |
+| PUT | `/api/admin/pasarela` | `{estado}` (`ACTIVA` o `INACTIVA`) | 200 `Pasarela` |
 
 - `Pago`: `{id, inmuebleId, direccionInmueble, monto, fechaPago, concepto, metodoPago, estado, referencia}`.
 - `estado` del pago: `PENDIENTE`, `APROBADO`, `RECHAZADO`, `ANULADO`, `REEMBOLSADO`.
 - `Pasarela`: `{id, nombrePasarela, urlApi, apiKey, estado}`. **`apiKey` sale enmascarada** (solo los últimos 4 caracteres). `estado`: `ACTIVA` o `INACTIVA`.
+- **Nombre, URLs y llaves se configuran solo en el `.env` del servidor** (`PASARELA_*`). Al arrancar, el back sincroniza la tabla con esos valores y conserva el `estado`. Por API solo se activa o desactiva la pasarela.
 - Anular un pago que no está `PENDIENTE` o reembolsar uno que no está `APROBADO` devuelve 409. Reembolsar reabre la liquidación vigente y notifica al inmueble.
 
 ## 5. Residente - `/api/residente` (todos **RESIDENTE**)
@@ -184,7 +185,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 
 - `EstadoCuenta`: `{inmuebleId, direccionInmueble, estadoPago, saldoPendiente, pazYSalvo, liquidacionVigente}`.
 - **Pagar:** `metodoPago` es `PSE`, `TARJETA` o `NEQUI`. **El valor lo calcula el servidor** (saldo pendiente); el cliente nunca envía el monto. El pago nace `PENDIENTE` y el front debe **redirigir al residente a `urlCheckout`**. El resultado llega después por webhook (ver sección 8); el front puede consultarlo con `GET /api/pagos/estado/{referencia}`.
-- Errores típicos: 403 cuenta inactiva; 409 sin saldo pendiente, pasarela no configurada o sin secreto de integridad en el servidor.
+- Errores típicos: 403 cuenta inactiva; 409 sin saldo pendiente o pasarela mal configurada en el servidor (llaves o URLs faltantes, inválidas o de ambientes mezclados).
 
 ### 5.2 Invitados y auto
 | Método | Ruta | Cuerpo | Respuesta |
