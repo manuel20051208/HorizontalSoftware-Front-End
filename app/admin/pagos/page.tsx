@@ -1,8 +1,7 @@
 import { Check, CircleAlert, Clock, RotateCcw, XCircle } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
-import { Campo, CampoSelect } from '@/components/gestion/campos'
+import { BotonAccion } from '@/components/gestion/acciones-cliente'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
@@ -11,9 +10,8 @@ import {
   type EstadoTransaccion,
   type InmuebleResumen,
   type Pago,
-  type Pasarela,
 } from '@/lib/api/tipos'
-import { anularPago, guardarPasarela, reembolsarPago } from '@/lib/admin/acciones'
+import { anularPago, reembolsarPago } from '@/lib/admin/acciones'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -43,22 +41,20 @@ export default async function PagosPage({ searchParams }: Props) {
   if (inmuebleId > 0) consulta.set('inmuebleId', String(inmuebleId))
   if (estado) consulta.set('estado', estado)
 
-  const [pagosR, inmueblesR, pasarelaR] = await Promise.all([
+  const [pagosR, inmueblesR] = await Promise.all([
     apiConSesion<Pago[]>('admin', consulta.size ? `${RUTAS_API.pagosAdmin}?${consulta}` : RUTAS_API.pagosAdmin, {
       metodo: 'GET',
     }),
     apiConSesion<InmuebleResumen[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' }),
-    apiConSesion<Pasarela>('admin', RUTAS_API.pasarela, { metodo: 'GET' }),
   ])
   const pagos = pagosR.ok && Array.isArray(pagosR.datos) ? pagosR.datos : []
   const inmuebles = inmueblesR.ok && Array.isArray(inmueblesR.datos) ? inmueblesR.datos : []
-  const pasarela = pasarelaR.ok ? pasarelaR.datos : null
 
   return (
     <div className={styles.pagina}>
       <Encabezado
-        titulo="Pagos y pasarela"
-        descripcion="Historial de pagos del conjunto, anulaciones, reembolsos y configuración de la pasarela."
+        titulo="Pagos"
+        descripcion="Historial de pagos del conjunto, anulaciones y reembolsos."
         acciones={
           <Link href="/admin/inmuebles" prefetch={false} className="btn" data-variant="secondary">
             Conciliar pago
@@ -191,51 +187,6 @@ export default async function PagosPage({ searchParams }: Props) {
               </tbody>
             </table>
           </div>
-        )}
-      </Panel>
-
-      <Panel titulo="Pasarela de pagos" nota="La llave se guarda completa; el backend solo devuelve los últimos cuatro caracteres.">
-        {!pasarelaR.ok ? (
-          <EstadoResultado resultado={pasarelaR} porDefecto="No se pudo cargar la pasarela." />
-        ) : (
-          <>
-            {pasarela && (
-              <p className="t-nota" style={{ marginBottom: '0.75rem' }}>
-                Configuración actual: <strong>{pasarela.nombrePasarela}</strong> · {pasarela.urlApi} · llave{' '}
-                <span className="t-columna">{pasarela.apiKey}</span> · {pasarela.estado}
-              </p>
-            )}
-            <FormularioAccion accion={guardarPasarela} texto="Guardar pasarela" variante="secondary">
-              <div className={styles.rejilla}>
-                <Campo nombre="nombrePasarela" etiqueta="Nombre" valor={pasarela?.nombrePasarela ?? 'Wompi'} maxLength={60} requerido />
-                <CampoSelect
-                  nombre="estado"
-                  etiqueta="Estado"
-                  valor={pasarela?.estado ?? 'ACTIVA'}
-                  opciones={[
-                    { valor: 'ACTIVA', texto: 'Activa' },
-                    { valor: 'INACTIVA', texto: 'Inactiva' },
-                  ]}
-                  requerido
-                />
-                <Campo nombre="urlApi" etiqueta="URL de la API" valor={pasarela?.urlApi ?? ''} maxLength={300} requerido ancho />
-                <Campo
-                  nombre="apiKey"
-                  etiqueta="Llave de la pasarela"
-                  tipo="password"
-                  maxLength={200}
-                  requerido
-                  ancho
-                  autoComplete="off"
-                  ayuda={
-                    pasarela
-                      ? `Llave actual enmascarada: ${pasarela.apiKey}. Escribe la llave completa para reemplazarla.`
-                      : 'Escribe la llave pública del comercio.'
-                  }
-                />
-              </div>
-            </FormularioAccion>
-          </>
         )}
       </Panel>
 

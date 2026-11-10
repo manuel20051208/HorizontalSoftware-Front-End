@@ -35,7 +35,7 @@ const MENUS: Record<'admin' | 'residente', Menu> = {
         titulo: 'Pagos',
         opciones: [
           { texto: 'Liquidaciones', nota: 'Genera y ajusta el cobro del periodo', icono: FileText, href: '/admin/liquidaciones' },
-          { texto: 'Pagos recibidos', nota: 'Movimientos y pasarela de pago', icono: Wallet, href: '/admin/pagos' },
+          { texto: 'Pagos recibidos', nota: 'Movimientos, anulaciones y reembolsos', icono: Wallet, href: '/admin/pagos' },
           { texto: 'Conciliar pago', nota: 'Registra un pago desde el inmueble', icono: Receipt, href: '/admin/inmuebles' },
         ],
       },
