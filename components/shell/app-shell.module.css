@@ -8,8 +8,11 @@
   position: sticky;
   top: 0;
   z-index: 20;
+  padding-top: env(safe-area-inset-top);
   background: var(--papel);
   border-bottom: 1px solid var(--linea);
+  -webkit-backdrop-filter: var(--vidrio-blur);
+  backdrop-filter: var(--vidrio-blur);
 }
 
 .barInner {
@@ -78,7 +81,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--alerta-celda);
-  box-shadow: 0 0 0 2px var(--papel);
+  box-shadow: 0 0 0 2px var(--papel-solido);
 }
 
 .usuario {
@@ -119,7 +122,7 @@
 
 .main {
   flex: 1;
-  padding-block: clamp(1.5rem, 4vw, 3rem) 5rem;
+  padding-block: clamp(1.5rem, 4vw, 3rem) calc(5rem + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 720px) {

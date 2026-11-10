@@ -2,20 +2,13 @@
 
 import {
   Bell,
-  CalendarDays,
   Check,
   CircleAlert,
-  ClipboardList,
   Clock,
-  FileText,
-  Megaphone,
   Receipt,
   RotateCcw,
-  UserPlus,
-  Users,
   Wallet,
   XCircle,
-  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
@@ -31,16 +24,6 @@ import {
 import { useHoy } from '@/lib/use-hoy'
 import styles from './admin-dashboard.module.css'
 import { TowerPlan } from './tower-plan'
-
-const ACCIONES: { texto: string; icono: LucideIcon; variante: 'primary' | 'secondary'; href: string }[] = [
-  { texto: 'Nuevo comunicado', icono: Megaphone, variante: 'primary', href: '/admin/notificaciones' },
-  { texto: 'Crear cuenta', icono: UserPlus, variante: 'secondary', href: '/admin/usuarios/nueva' },
-  { texto: 'Liquidaciones', icono: FileText, variante: 'secondary', href: '/admin/liquidaciones' },
-  { texto: 'Zonas comunes', icono: ClipboardList, variante: 'secondary', href: '/admin/zonas-comunes' },
-  { texto: 'Reglas de reserva', icono: CalendarDays, variante: 'secondary', href: '/admin/reglas-reserva' },
-  { texto: 'Conciliar pago', icono: Receipt, variante: 'secondary', href: '/admin/inmuebles' },
-  { texto: 'Usuarios', icono: Users, variante: 'secondary', href: '/admin/usuarios' },
-]
 
 const TONO_PAGO: Record<EstadoTransaccion, 'ok' | 'wait' | 'alert' | 'neutral'> = {
   APROBADO: 'ok',
@@ -106,14 +89,6 @@ export function AdminDashboard({
           </p>
         </div>
 
-        <div className={styles.acciones}>
-          {ACCIONES.map(({ texto, icono: Icono, variante, href }) => (
-            <Link key={texto} href={href} prefetch={false} className={`btn ${styles.accion}`} data-variant={variante}>
-              <Icono aria-hidden="true" />
-              {texto}
-            </Link>
-          ))}
-        </div>
       </header>
 
       {resumenError && (

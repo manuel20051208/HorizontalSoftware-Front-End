@@ -26,9 +26,9 @@ export default async function NuevaCuentaPage({ searchParams }: Props) {
 
   return (
     <div className={styles.pagina}>
-      <Link href="/admin/usuarios" prefetch={false} className={`btn ${styles.volver}`} data-variant="quiet" data-size="sm">
+      <Link href="/admin" prefetch={false} className={`btn ${styles.volver}`} data-variant="quiet" data-size="sm">
         <ArrowLeft aria-hidden="true" />
-        Usuarios
+        Panel
       </Link>
 
       <header className={styles.titulo}>

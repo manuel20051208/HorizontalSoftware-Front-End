@@ -1,0 +1,251 @@
+/* Esqueletos que se muestran al instante mientras el servidor arma la pantalla.
+   Copian la estructura real de cada vista (cabecera, paneles, rejillas) para que
+   el contenido no «salte» al llegar. */
+.pagina {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+/* Trazo base: una barra gris que hace de texto, botón o celda */
+.t {
+  display: block;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: rgb(27 21 72 / 0.1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .t {
+    animation: pulso 1.1s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes pulso {
+  to {
+    opacity: 0.45;
+  }
+}
+
+.volver {
+  width: 6rem;
+  margin-bottom: -0.75rem;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+}
+
+.titulo {
+  display: grid;
+  gap: 0.75rem;
+  flex: 1 1 16rem;
+  max-width: 44rem;
+}
+
+.h1 {
+  width: min(16rem, 70%);
+  height: clamp(1.875rem, 3.4vw, 2.75rem);
+  border-radius: var(--radio-control);
+}
+
+.sub {
+  width: min(28rem, 100%);
+}
+
+.boton {
+  width: 9.5rem;
+  height: 2.75rem;
+  border-radius: var(--radio-control);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.chip {
+  width: 8rem;
+  height: 2.5rem;
+  border-radius: var(--radio-control);
+}
+
+.filtro {
+  width: 5.5rem;
+  height: 2.25rem;
+}
+
+.panel {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.panelCabecera {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.h2 {
+  width: 11rem;
+  height: 1.25rem;
+}
+
+.nota {
+  width: min(20rem, 80%);
+  height: 0.75rem;
+}
+
+/* Tabla: filas con cuatro celdas */
+.filas {
+  display: grid;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.6fr;
+  gap: 1.5rem;
+  align-items: center;
+  padding-block: 0.875rem;
+  border-top: 1px solid var(--linea);
+}
+
+.fila:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.fila:first-child .t {
+  height: 0.625rem;
+  opacity: 0.7;
+}
+
+/* Lista: ítems de dos renglones */
+.items {
+  display: grid;
+  gap: 1.125rem;
+}
+
+.item {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.item .t:first-child {
+  width: min(14rem, 60%);
+}
+
+.item .t:last-child {
+  width: min(26rem, 90%);
+  height: 0.75rem;
+}
+
+/* Formulario: campos en dos columnas y botón */
+.campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  max-width: 40rem;
+}
+
+.campo {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.etiqueta {
+  width: 6rem;
+  height: 0.75rem;
+}
+
+.entrada {
+  height: 2.75rem;
+  border-radius: var(--radio-control);
+}
+
+/* Ficha de datos (dl): pares etiqueta / valor */
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1.25rem;
+}
+
+.dato {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.dato .t:first-child {
+  width: 5rem;
+  height: 0.625rem;
+}
+
+.dato .t:last-child {
+  width: 8rem;
+  height: 1.125rem;
+}
+
+/* Paneles de inicio */
+.adminPrincipal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.adminInferior {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.dosColumnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.plano {
+  height: 12rem;
+  border-radius: var(--radio-documento);
+}
+
+.cifraGrande {
+  width: 7rem;
+  height: 2.25rem;
+  border-radius: var(--radio-control);
+}
+
+@media (max-width: 1000px) {
+  .adminPrincipal,
+  .adminInferior {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 880px) {
+  .dosColumnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .campos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fila {
+    grid-template-columns: 1.4fr 1fr;
+  }
+
+  .fila .t:nth-child(n + 3) {
+    display: none;
+  }
+}

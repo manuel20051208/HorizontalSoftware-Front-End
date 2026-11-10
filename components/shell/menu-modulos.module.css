@@ -1,0 +1,185 @@
+/* Menú horizontal de módulos: vive dentro de la barra fija, debajo de la marca. */
+.menu {
+  position: relative;
+  border-top: 1px solid var(--linea);
+}
+
+.fila {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.grupo {
+  position: relative;
+}
+
+.pestana {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 44px;
+  padding-inline: 0.75rem;
+  border-radius: 8px;
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.pestana svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.pestana:hover,
+.pestana[aria-expanded='true'] {
+  background: var(--sello-tinte);
+  color: var(--tinta);
+}
+
+/* La columna de la pantalla en la que estás lleva una línea debajo */
+.pestana[aria-current='page'],
+.pestana[data-actual] {
+  color: var(--tinta);
+}
+
+.pestana[aria-current='page']::after,
+.pestana[data-actual]::after {
+  content: '';
+  position: absolute;
+  inset: auto 0.75rem 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--sello);
+}
+
+.flecha {
+  transition: transform 0.15s ease;
+}
+
+.pestana[aria-expanded='true'] .flecha {
+  transform: rotate(180deg);
+}
+
+/* Las opciones de la columna. Opaco a propósito: se lee sobre cualquier fondo
+   y no suma otro desenfoque encima de la página. */
+.panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 0.125rem;
+  width: max-content;
+  min-width: 17rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.5rem;
+  border: 1px solid var(--linea);
+  border-radius: 0 0 var(--radio-control) var(--radio-control);
+  background: var(--papel-solido);
+  box-shadow: 0 14px 28px -12px rgb(27 21 72 / 0.35);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  color: var(--tinta);
+  text-decoration: none;
+}
+
+.opcion:hover,
+.opcion[aria-current='page'] {
+  background: var(--sello-tinte);
+}
+
+.opcion svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  color: var(--sello);
+}
+
+.opcion span {
+  display: grid;
+  line-height: 1.25;
+}
+
+.opcion strong {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.opcion small {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+}
+
+/* Teléfono: las columnas se reparten el ancho y las opciones se abren como una
+   hoja de lado a lado, justo debajo del menú. */
+@media (max-width: 720px) {
+  .fila {
+    gap: 0;
+    justify-content: space-between;
+    padding-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .grupo {
+    position: static;
+  }
+
+  .pestana {
+    padding-inline: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .pestana::after {
+    inset-inline: 0.5rem;
+  }
+
+  .inicioTexto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .panel {
+    right: 0;
+    width: auto;
+    max-width: none;
+    padding: 0.5rem max(0.75rem, env(safe-area-inset-right)) 0.75rem max(0.75rem, env(safe-area-inset-left));
+    border-inline: 0;
+    border-radius: 0;
+  }
+}
+
+/* Con las flechas, las cinco columnas no caben en un teléfono */
+@media (max-width: 480px) {
+  .flecha {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .pestana {
+    padding-inline: 0.375rem;
+    font-size: 0.8125rem;
+  }
+}

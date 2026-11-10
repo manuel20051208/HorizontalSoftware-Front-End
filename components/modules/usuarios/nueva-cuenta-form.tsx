@@ -295,7 +295,7 @@ export function NuevaCuentaForm({
           {enviando ? 'Creando…' : 'Crear cuenta'}
         </button>
         <Link href="/admin/usuarios" prefetch={false} className="btn" data-variant="quiet">
-          Cancelar
+          Ver usuarios
         </Link>
       </div>
     </form>

@@ -44,6 +44,8 @@
   --muesca: 0.875rem;
   border-radius: 14px;
   background: var(--papel);
+  -webkit-backdrop-filter: var(--vidrio-blur);
+  backdrop-filter: var(--vidrio-blur);
   -webkit-mask:
     radial-gradient(circle var(--muesca) at 0 calc(100% - var(--talon)), #0000 98%, #000) left / 51% 100% no-repeat,
     radial-gradient(circle var(--muesca) at 100% calc(100% - var(--talon)), #0000 98%, #000) right / 51% 100% no-repeat;
