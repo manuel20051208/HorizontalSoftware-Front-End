@@ -13,6 +13,7 @@ import {
   type Liquidacion,
 } from '@/lib/api/tipos'
 import { cambiarEstadoLiquidacion, generarLiquidacion, generarLiquidacionMasiva } from '@/lib/admin/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -40,15 +41,15 @@ export default async function LiquidacionesPage({ searchParams }: Props) {
   if (periodo) consulta.set('periodo', periodo)
 
   const [liquidacionesR, inmueblesR] = await Promise.all([
-    apiConSesion<Liquidacion[]>(
+    apiConSesion<Listado<Liquidacion>>(
       'admin',
-      consulta.size ? `${RUTAS_API.liquidaciones}?${consulta}` : RUTAS_API.liquidaciones,
+      listado(consulta.size ? `${RUTAS_API.liquidaciones}?${consulta}` : RUTAS_API.liquidaciones),
       { metodo: 'GET' },
     ),
-    apiConSesion<InmuebleResumen[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' }),
+    apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
   ])
-  const liquidaciones = liquidacionesR.ok && Array.isArray(liquidacionesR.datos) ? liquidacionesR.datos : []
-  const inmuebles = inmueblesR.ok && Array.isArray(inmueblesR.datos) ? inmueblesR.datos : []
+  const liquidaciones = listaDe(liquidacionesR)
+  const inmuebles = listaDe(inmueblesR)
 
   return (
     <div className={styles.pagina}>

@@ -354,6 +354,12 @@
 
 .recibos {
   display: grid;
+  margin-bottom: 0.5rem;
+}
+
+/* Al saltar de página con #historial, la tarjeta no queda pegada a la barra superior */
+.historial {
+  scroll-margin-top: 1rem;
 }
 
 .recibo {

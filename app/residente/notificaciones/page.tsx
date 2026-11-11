@@ -5,6 +5,7 @@ import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/
 import styles from '@/components/gestion/gestion.module.css'
 import type { Notificacion } from '@/lib/api/tipos'
 import { marcarNotificacionesLeidas } from '@/lib/cuenta/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -23,8 +24,8 @@ function fechaHora(valor: string) {
 
 export default async function NotificacionesResidentePage() {
   await requerirSesion('residente')
-  const r = await apiConSesion<Notificacion[]>('residente', RUTAS_API.notificaciones, { metodo: 'GET' })
-  const notificaciones = r.ok && Array.isArray(r.datos) ? [...r.datos].sort((a, b) => b.id - a.id) : []
+  const r = await apiConSesion<Listado<Notificacion>>('residente', listado(RUTAS_API.notificaciones), { metodo: 'GET' })
+  const notificaciones = listaDe(r).sort((a, b) => b.id - a.id)
 
   return (
     <div className={styles.pagina}>

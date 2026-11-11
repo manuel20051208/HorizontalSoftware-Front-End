@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { UsuariosVista } from '@/components/modules/usuarios/usuarios-vista'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 import { tipoDeFiltro, type Usuario } from '@/lib/usuarios/tipos'
@@ -17,9 +18,9 @@ export default async function UsuariosPage({ searchParams }: Props) {
   const consulta = new URLSearchParams()
   if (tipo) consulta.set('tipo', tipo)
   if (estado) consulta.set('active', String(estado === 'activas'))
-  const resultado = await apiConSesion<Usuario[]>(
+  const resultado = await apiConSesion<Listado<Usuario>>(
     'admin',
-    consulta.size ? `${RUTAS_API.usuarios}?${consulta}` : RUTAS_API.usuarios,
+    listado(consulta.size ? `${RUTAS_API.usuarios}?${consulta}` : RUTAS_API.usuarios),
     { metodo: 'GET' },
   )
 

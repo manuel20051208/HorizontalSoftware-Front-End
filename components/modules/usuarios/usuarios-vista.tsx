@@ -1,6 +1,7 @@
 import { ArrowLeft, Check, CircleAlert, Clock, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
+import { listaDe, type Listado } from '@/lib/api/paginacion'
 import type { Resultado } from '@/lib/auth/api'
 import { alternarActivo } from '@/lib/usuarios/acciones'
 import { esTipoCuenta, TIPOS_CUENTA, type TipoCuenta, type Usuario } from '@/lib/usuarios/tipos'
@@ -30,13 +31,12 @@ export function UsuariosVista({
   tipo,
   estado,
 }: {
-  resultado: Resultado<Usuario[]>
+  resultado: Resultado<Listado<Usuario>>
   tipo?: TipoCuenta
   estado?: Estado
 }) {
   // Los invitados (USUARIO_AUTORIZADO) los maneja cada residente; aquí solo van las cuentas que crea la administración
-  const usuarios =
-    resultado.ok && Array.isArray(resultado.datos) ? resultado.datos.filter((u) => esTipoCuenta(u.tipoUsuario)) : []
+  const usuarios = listaDe(resultado).filter((u) => esTipoCuenta(u.tipoUsuario))
 
   return (
     <div className={styles.pagina}>

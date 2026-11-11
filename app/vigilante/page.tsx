@@ -1,12 +1,15 @@
-import { Car, Check, Clock, LogIn, Search, ShieldCheck, ShieldX, UserCheck } from 'lucide-react'
+import { Car, Clock, LogIn, Search, ShieldCheck, ShieldX, UserCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BotonAccion } from '@/components/gestion/acciones-cliente'
 import { EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import gestion from '@/components/gestion/gestion.module.css'
+import { ChipReserva } from '@/components/ui/chip-reserva'
 import { horaLegible } from '@/lib/api/acciones'
+import { horaReserva, horarioReserva, hoyColombia, porInicio } from '@/lib/api/reservas'
 import type { Acceso, Anfitrion, Duenos, InvitadoConsulta, Reserva } from '@/lib/api/tipos'
 import { registrarIngreso } from '@/lib/vigilante/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -22,9 +25,15 @@ export default async function SecurityPage({ searchParams }: Props) {
   const autoId = /^\d+$/.test(params.autoId ?? '') ? Number(params.autoId) : 0
   const inmuebleId = /^\d+$/.test(params.inmuebleId ?? '') ? Number(params.inmuebleId) : 0
 
-  // Siempre: las reservas de hoy. Bajo demanda: la consulta de acceso y la de dueños de un auto.
-  const [reservasR, accesoR, invitadoR, duenosR] = await Promise.all([
-    apiConSesion<Reserva[]>('vigilante', RUTAS_API.vigilanteReservas, { metodo: 'GET' }),
+  // Siempre: las reservas en curso y las programadas. Bajo demanda: la consulta de acceso y la
+  // de dueños de un auto.
+  const [enCursoR, programadasR, accesoR, invitadoR, duenosR] = await Promise.all([
+    apiConSesion<Listado<Reserva>>('vigilante', listado(`${RUTAS_API.vigilanteReservas}?estado=EN_CURSO`), {
+      metodo: 'GET',
+    }),
+    apiConSesion<Listado<Reserva>>('vigilante', listado(`${RUTAS_API.vigilanteReservas}?estado=PROGRAMADA`), {
+      metodo: 'GET',
+    }),
     identificacion
       ? apiConSesion<Acceso>('vigilante', RUTAS_API.vigilanteAcceso(identificacion), { metodo: 'GET' })
       : Promise.resolve(null),
@@ -36,21 +45,26 @@ export default async function SecurityPage({ searchParams }: Props) {
       : Promise.resolve(null),
   ])
 
-  const reservas =
-    reservasR.ok && Array.isArray(reservasR.datos)
-      ? [...reservasR.datos].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))
-      : []
+  // Hoy en portería: lo que está en curso y lo que empieza más tarde hoy (hora de Colombia).
+  // El filtro por estado también se aplica aquí por si el backend todavía no lo soporta.
+  const hoy = hoyColombia()
+  const reservasR = !enCursoR.ok ? enCursoR : programadasR
+  const reservas = [
+    ...listaDe(enCursoR).filter((r) => r.estado === 'EN_CURSO'),
+    ...listaDe(programadasR).filter((r) => r.estado === 'PROGRAMADA' && r.fechaHoraInicio?.startsWith(hoy)),
+  ].sort(porInicio)
+  const enCurso = reservas.filter((r) => r.estado === 'EN_CURSO').length
   const acceso = accesoR?.ok ? accesoR.datos : null
   const invitado = invitadoR?.ok ? invitadoR.datos : null
 
   // Si la persona consultada es un invitado conocido, mostramos a qué residentes visita.
   const anfitrionesR =
     invitado?.invitado?.id
-      ? await apiConSesion<Anfitrion[]>('vigilante', RUTAS_API.invitadoAnfitriones(invitado.invitado.id), {
+      ? await apiConSesion<Listado<Anfitrion>>('vigilante', listado(RUTAS_API.invitadoAnfitriones(invitado.invitado.id)), {
           metodo: 'GET',
         })
       : null
-  const anfitriones = anfitrionesR?.ok && Array.isArray(anfitrionesR.datos) ? anfitrionesR.datos : []
+  const anfitriones = listaDe(anfitrionesR)
   const duenos = duenosR?.ok ? duenosR.datos : null
 
   return (
@@ -118,7 +132,10 @@ export default async function SecurityPage({ searchParams }: Props) {
                 <ul className="t-nota" style={{ display: 'grid', gap: '0.25rem', paddingLeft: '1.125rem', listStyle: 'disc' }}>
                   {acceso.zonasPermitidas.map((z) => (
                     <li key={z.zonaComunId}>
-                      {z.nombreZonaComun}: {horaLegible(z.horaInicio)} a {horaLegible(z.horaFin)}
+                      {z.nombreZonaComun}
+                      {z.reservaHasta
+                        ? `: reserva hasta las ${horaReserva(z.reservaHasta)}`
+                        : `: ${horaLegible(z.horaInicio)} a ${horaLegible(z.horaFin)}`}
                     </li>
                   ))}
                 </ul>
@@ -235,11 +252,14 @@ export default async function SecurityPage({ searchParams }: Props) {
         </Panel>
 
         {/* ---------- Reservas de hoy ---------- */}
-        <Panel titulo="Reservas de hoy" nota={`${reservas.length} ${reservas.length === 1 ? 'reserva' : 'reservas'} en las zonas comunes.`}>
+        <Panel
+          titulo="Reservas de hoy"
+          nota={`${enCurso} en curso · ${reservas.length - enCurso} más tarde hoy. Solo una reserva en curso da acceso a la zona.`}
+        >
           {!reservasR.ok ? (
             <EstadoResultado resultado={reservasR} porDefecto="No se pudieron cargar las reservas." />
           ) : reservas.length === 0 ? (
-            <Vacio>No hay reservas registradas.</Vacio>
+            <Vacio>No hay reservas en curso ni programadas para hoy.</Vacio>
           ) : (
             <div className={gestion.tablaMarco}>
               <table className={gestion.tabla} data-cards>
@@ -257,23 +277,13 @@ export default async function SecurityPage({ searchParams }: Props) {
                   {reservas.map((r) => (
                     <tr key={r.id}>
                       <td className={`t-columna ${gestion.ahora}`} data-label="Horario">
-                        {horaLegible(r.horaInicio)} a {horaLegible(r.horaFin)}
+                        {horarioReserva(r)}
                       </td>
                       <td className={`t-voz ${gestion.nombre} ${gestion.celdaPrincipal}`}>{r.nombreZonaComun}</td>
                       <td data-label="Reservó">{r.nombreDueno}</td>
                       <td className={gestion.ahora} data-label="Apartamento">{r.direccionInmueble}</td>
                       <td data-label="Estado">
-                        {r.enCurso ? (
-                          <span className="chip" data-tone="info">
-                            <Clock aria-hidden="true" />
-                            En curso
-                          </span>
-                        ) : (
-                          <span className="chip" data-tone="neutral">
-                            <Check aria-hidden="true" />
-                            Programada
-                          </span>
-                        )}
+                        <ChipReserva estado={r.estado} />
                       </td>
                     </tr>
                   ))}

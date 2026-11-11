@@ -7,6 +7,7 @@ import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
 import type { Regla, Zona } from '@/lib/api/tipos'
 import { actualizarRegla, alternarRompimiento, crearRegla } from '@/lib/admin/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -15,11 +16,11 @@ export const metadata: Metadata = { title: 'Reglas de reserva' }
 export default async function ReglasPage() {
   await requerirSesion('admin')
   const [reglasR, zonasR] = await Promise.all([
-    apiConSesion<Regla[]>('admin', RUTAS_API.reglas, { metodo: 'GET' }),
-    apiConSesion<Zona[]>('admin', RUTAS_API.zonasComunes, { metodo: 'GET' }),
+    apiConSesion<Listado<Regla>>('admin', listado(RUTAS_API.reglas), { metodo: 'GET' }),
+    apiConSesion<Listado<Zona>>('admin', listado(RUTAS_API.zonasComunes), { metodo: 'GET' }),
   ])
-  const reglas = reglasR.ok && Array.isArray(reglasR.datos) ? reglasR.datos : []
-  const zonas = zonasR.ok && Array.isArray(zonasR.datos) ? zonasR.datos : []
+  const reglas = listaDe(reglasR)
+  const zonas = listaDe(zonasR)
 
   return (
     <div className={styles.pagina}>

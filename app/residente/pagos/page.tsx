@@ -1,10 +1,11 @@
 import { ArrowLeft, CalendarDays, Check, Clock, Inbox, RotateCcw, XCircle } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { EstadoResultado } from '@/components/gestion/piezas'
+import { EstadoResultado, Paginacion } from '@/components/gestion/piezas'
 import { TalonPago } from '@/components/modules/pagos/talon-pago'
 import styles from '@/components/modules/pagos/pagos.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
+import { consultaPagina, leerPagina, paginaDeUrl, type Listado } from '@/lib/api/paginacion'
 import {
   ESTADO_CARTERA_TEXTO,
   ESTADO_TRANSACCION_TEXTO,
@@ -16,6 +17,11 @@ import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
 export const metadata: Metadata = { title: 'Pagos' }
+
+/** Pagos por página del historial: la tarjeta no crece sin límite. */
+const POR_PAGINA = 5
+
+type Props = { searchParams: Promise<{ pagina?: string }> }
 
 function mesLargo(periodo: string) {
   const fecha = new Date(`${periodo.slice(0, 10)}T00:00:00Z`)
@@ -40,15 +46,19 @@ function IconoPago({ estado }: { estado: EstadoTransaccion }) {
   return <XCircle aria-hidden="true" />
 }
 
-export default async function MisPagosPage() {
+export default async function MisPagosPage({ searchParams }: Props) {
   await requerirSesion('residente')
+  const paginaPedida = paginaDeUrl((await searchParams).pagina)
 
   const [cuentaR, pagosR] = await Promise.all([
     apiConSesion<EstadoCuenta>('residente', RUTAS_API.miCuenta, { metodo: 'GET' }),
-    apiConSesion<Pago[]>('residente', RUTAS_API.misPagos, { metodo: 'GET' }),
+    apiConSesion<Listado<Pago>>('residente', `${RUTAS_API.misPagos}?${consultaPagina(paginaPedida, POR_PAGINA)}`, {
+      metodo: 'GET',
+    }),
   ])
   const cuenta = cuentaR.ok ? cuentaR.datos : null
-  const pagos = pagosR.ok && Array.isArray(pagosR.datos) ? [...pagosR.datos].sort((a, b) => b.id - a.id) : []
+  const historial = leerPagina(pagosR, paginaPedida, POR_PAGINA, (a, b) => b.id - a.id)
+  const pagos = historial.items
 
   const liquidacion = cuenta?.liquidacionVigente ?? null
   const saldo = cuenta?.saldoPendiente ?? 0
@@ -150,12 +160,15 @@ export default async function MisPagosPage() {
         </div>
       ) : null}
 
-      <section className={`hoja ${styles.historial}`} aria-labelledby="historial-titulo">
+      <section id="historial" className={`hoja ${styles.historial}`} aria-labelledby="historial-titulo">
         <div className={styles.histCabecera}>
           <h2 id="historial-titulo" className={styles.histTitulo}>
             Historial de pagos
           </h2>
-          <p className="t-nota">{pagos.length === 1 ? '1 pago' : `${pagos.length} pagos`}</p>
+          <p className="t-nota">
+            {historial.total === 1 ? '1 pago' : `${historial.total} pagos`}
+            {historial.totalPaginas > 1 && ` · página ${historial.pagina} de ${historial.totalPaginas}`}
+          </p>
         </div>
 
         {!pagosR.ok ? (
@@ -201,6 +214,13 @@ export default async function MisPagosPage() {
             ))}
           </ul>
         )}
+
+        <Paginacion
+          pagina={historial.pagina}
+          totalPaginas={historial.totalPaginas}
+          href={(n) => (n === 1 ? '/residente/pagos#historial' : `/residente/pagos?pagina=${n}#historial`)}
+          etiqueta="Páginas del historial de pagos"
+        />
       </section>
     </div>
   )

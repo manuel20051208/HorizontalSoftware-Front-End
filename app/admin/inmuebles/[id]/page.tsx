@@ -13,6 +13,7 @@ import {
   type InmuebleDetalle,
   type Zona,
 } from '@/lib/api/tipos'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 import {
@@ -35,7 +36,7 @@ export default async function InmueblePage({ params }: Props) {
 
   const [detalleR, zonasR] = await Promise.all([
     apiConSesion<InmuebleDetalle>('admin', RUTAS_API.inmueble(inmuebleId), { metodo: 'GET' }),
-    apiConSesion<Zona[]>('admin', RUTAS_API.zonasComunes, { metodo: 'GET' }),
+    apiConSesion<Listado<Zona>>('admin', listado(RUTAS_API.zonasComunes), { metodo: 'GET' }),
   ])
 
   if (!detalleR.ok && detalleR.status === 404) notFound()
@@ -50,7 +51,7 @@ export default async function InmueblePage({ params }: Props) {
   }
 
   const inmueble = detalleR.datos
-  const zonas = zonasR.ok && Array.isArray(zonasR.datos) ? zonasR.datos : []
+  const zonas = listaDe(zonasR)
   const asignadas = new Set(inmueble.zonasComunes.map((z) => z.id))
   const liquidacion = inmueble.liquidacionVigente
 

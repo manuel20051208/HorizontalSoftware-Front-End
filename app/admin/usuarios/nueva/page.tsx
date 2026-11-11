@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { NuevaCuentaForm } from '@/components/modules/usuarios/nueva-cuenta-form'
 import styles from '@/components/modules/usuarios/usuarios.module.css'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 import { hoyBogota, type Inmueble, tipoDeFiltro } from '@/lib/usuarios/tipos'
@@ -16,13 +17,12 @@ export default async function NuevaCuentaPage({ searchParams }: Props) {
   const { tipo } = await searchParams
 
   // Los apartamentos, para asignarle uno a la cuenta de un residente
-  const r = await apiConSesion<Inmueble[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' })
-  const inmuebles =
-    r.ok && Array.isArray(r.datos)
-      ? r.datos
-          .filter((i) => i.isActive !== false)
-          .sort((a, b) => a.direccionInmueble.localeCompare(b.direccionInmueble, 'es', { numeric: true }))
-      : null
+  const r = await apiConSesion<Listado<Inmueble>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' })
+  const inmuebles = r.ok
+    ? listaDe(r)
+        .filter((i) => i.isActive !== false)
+        .sort((a, b) => a.direccionInmueble.localeCompare(b.direccionInmueble, 'es', { numeric: true }))
+    : null
 
   return (
     <div className={styles.pagina}>
