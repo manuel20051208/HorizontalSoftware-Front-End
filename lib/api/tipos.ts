@@ -203,13 +203,27 @@ export type Duenos = { autoId: number; inmuebleId: number; duenos: Dueno[] }
 
 // ---------- Reservas ----------
 
+/** Lo calcula el servidor con la hora de Colombia en cada respuesta (no se guarda). */
+export type EstadoReserva = 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA'
+
+export const ESTADO_RESERVA_TEXTO: Record<EstadoReserva, string> = {
+  PROGRAMADA: 'Programada',
+  EN_CURSO: 'En curso',
+  FINALIZADA: 'Finalizada',
+}
+
 export type Reserva = {
   id: number
   zonaComunId: number
   nombreZonaComun: string
-  horaInicio: string
-  horaFin: string
+  /** yyyy-MM-ddTHH:mm:ss, hora de Colombia. El fin no está incluido en la reserva. */
+  fechaHoraInicio: string
+  fechaHoraFin: string
+  estado: EstadoReserva
+  /** EN_CURSO y con la zona todavía activa. */
   enCurso: boolean
+  /** Solo mientras está PROGRAMADA. */
+  cancelable: boolean
   duenoReservaId: number
   nombreDueno: string
   inmuebleId: number
@@ -218,10 +232,15 @@ export type Reserva = {
 
 export type Disponibilidad = {
   zonaComunId: number
-  hora: string
+  fechaHoraInicio: string
+  fechaHoraFin: string
   horarioValido: boolean
-  disponible: boolean
+  cumpleReglas: boolean
+  hayCupo: boolean
   habilitado: boolean
+  /** true solo si se cumplen todas las validaciones de reservar. */
+  disponible: boolean
+  /** "Disponible" o el primer motivo por el que no se puede. */
   mensaje: string
 }
 
@@ -230,8 +249,11 @@ export type Disponibilidad = {
 export type ZonaPermitida = {
   zonaComunId: number
   nombreZonaComun: string
+  /** Horario de la zona (HH:mm:ss). */
   horaInicio: string
   horaFin: string
+  /** Cuándo termina la reserva que da el acceso (yyyy-MM-ddTHH:mm:ss). */
+  reservaHasta: string | null
 }
 
 export type Acceso = {

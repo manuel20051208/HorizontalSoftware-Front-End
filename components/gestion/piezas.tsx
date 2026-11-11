@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleAlert, Inbox } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, Inbox } from 'lucide-react'
 import Link from 'next/link'
 import type { Resultado } from '@/lib/auth/api'
 import styles from './gestion.module.css'
@@ -91,5 +91,78 @@ export function Vacio({ children }: { children: React.ReactNode }) {
       <Inbox aria-hidden="true" className={styles.vacioIcono} />
       {children}
     </p>
+  )
+}
+
+/**
+ * Navegación entre páginas de una lista larga. Son enlaces (?pagina=N), así que funciona
+ * sin JavaScript y cada página se puede compartir o recargar.
+ */
+export function Paginacion({
+  pagina,
+  totalPaginas,
+  href,
+  etiqueta = 'Páginas',
+}: {
+  pagina: number
+  totalPaginas: number
+  /** Arma la URL de una página, conservando los demás filtros. */
+  href: (pagina: number) => string
+  etiqueta?: string
+}) {
+  if (totalPaginas <= 1) return null
+
+  // Primera, última y las vecinas de la actual; el resto se resume con «…».
+  const numeros = [...new Set([1, pagina - 1, pagina, pagina + 1, totalPaginas])]
+    .filter((n) => n >= 1 && n <= totalPaginas)
+    .sort((a, b) => a - b)
+
+  return (
+    <nav className={styles.paginacion} aria-label={etiqueta}>
+      {pagina > 1 ? (
+        <Link href={href(pagina - 1)} prefetch={false} className={styles.paginaPaso} rel="prev">
+          <ChevronLeft aria-hidden="true" />
+          <span className={styles.paginaPasoTexto}>Anterior</span>
+        </Link>
+      ) : (
+        <span className={styles.paginaPaso} aria-disabled="true">
+          <ChevronLeft aria-hidden="true" />
+          <span className={styles.paginaPasoTexto}>Anterior</span>
+        </span>
+      )}
+
+      <ol className={styles.paginaNumeros}>
+        {numeros.map((n, i) => (
+          <li key={n} className={styles.paginaItem}>
+            {i > 0 && n - numeros[i - 1] > 1 && (
+              <span className={styles.paginaHueco} aria-hidden="true">
+                …
+              </span>
+            )}
+            <Link
+              href={href(n)}
+              prefetch={false}
+              className={styles.paginaNumero}
+              aria-current={n === pagina ? 'page' : undefined}
+              aria-label={`Página ${n}`}
+            >
+              {n}
+            </Link>
+          </li>
+        ))}
+      </ol>
+
+      {pagina < totalPaginas ? (
+        <Link href={href(pagina + 1)} prefetch={false} className={styles.paginaPaso} rel="next">
+          <span className={styles.paginaPasoTexto}>Siguiente</span>
+          <ChevronRight aria-hidden="true" />
+        </Link>
+      ) : (
+        <span className={styles.paginaPaso} aria-disabled="true">
+          <span className={styles.paginaPasoTexto}>Siguiente</span>
+          <ChevronRight aria-hidden="true" />
+        </span>
+      )}
+    </nav>
   )
 }

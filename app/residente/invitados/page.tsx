@@ -7,6 +7,7 @@ import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga } from '@/lib/api/acciones'
 import type { Invitado } from '@/lib/api/tipos'
 import { alternarInvitado, crearInvitado } from '@/lib/residente/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -14,13 +15,11 @@ export const metadata: Metadata = { title: 'Mis invitados' }
 
 export default async function InvitadosPage() {
   await requerirSesion('residente')
-  const r = await apiConSesion<Invitado[]>('residente', RUTAS_API.invitados, { metodo: 'GET' })
+  const r = await apiConSesion<Listado<Invitado>>('residente', listado(RUTAS_API.invitados), { metodo: 'GET' })
   const invitados =
-    r.ok && Array.isArray(r.datos)
-      ? [...r.datos].sort(
+    listaDe(r).sort(
           (a, b) => Number(b.vigente) - Number(a.vigente) || a.nombreCompleto.localeCompare(b.nombreCompleto),
         )
-      : []
   const vigentes = invitados.filter((i) => i.vigente).length
 
   return (

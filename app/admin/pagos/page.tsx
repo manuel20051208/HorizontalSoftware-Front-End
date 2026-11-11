@@ -12,6 +12,7 @@ import {
   type Pago,
 } from '@/lib/api/tipos'
 import { anularPago, reembolsarPago } from '@/lib/admin/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -42,13 +43,13 @@ export default async function PagosPage({ searchParams }: Props) {
   if (estado) consulta.set('estado', estado)
 
   const [pagosR, inmueblesR] = await Promise.all([
-    apiConSesion<Pago[]>('admin', consulta.size ? `${RUTAS_API.pagosAdmin}?${consulta}` : RUTAS_API.pagosAdmin, {
+    apiConSesion<Listado<Pago>>('admin', listado(consulta.size ? `${RUTAS_API.pagosAdmin}?${consulta}` : RUTAS_API.pagosAdmin), {
       metodo: 'GET',
     }),
-    apiConSesion<InmuebleResumen[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' }),
+    apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
   ])
-  const pagos = pagosR.ok && Array.isArray(pagosR.datos) ? pagosR.datos : []
-  const inmuebles = inmueblesR.ok && Array.isArray(inmueblesR.datos) ? inmueblesR.datos : []
+  const pagos = listaDe(pagosR)
+  const inmuebles = listaDe(inmueblesR)
 
   return (
     <div className={styles.pagina}>

@@ -2,24 +2,31 @@
 
 import {
   Bell,
+  Car,
   Check,
   CircleAlert,
   Clock,
+  RotateCcw,
   UserCheck,
+  XCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { Chip } from '@/components/ui/chip'
-import { fechaLarga, horaLegible, pesos } from '@/lib/api/acciones'
+import { Chip, type Tono } from '@/components/ui/chip'
+import { ChipReserva } from '@/components/ui/chip-reserva'
+import { fechaLarga, pesos } from '@/lib/api/acciones'
 import {
   ESTADO_CARTERA_TEXTO,
   ESTADO_TRANSACCION_TEXTO,
   type Auto,
   type EstadoCuenta,
+  type EstadoTransaccion,
   type Invitado,
   type Notificacion,
   type Pago,
   type Reserva,
 } from '@/lib/api/tipos'
+import { diaReserva, horaReserva } from '@/lib/api/reservas'
 import { useHoy } from '@/lib/use-hoy'
 import styles from './resident-dashboard.module.css'
 
@@ -28,6 +35,22 @@ function mes(periodo: string) {
   if (Number.isNaN(fecha.getTime())) return periodo
   const texto = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(fecha)
   return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+const TONO_PAGO: Record<EstadoTransaccion, Tono> = {
+  APROBADO: 'ok',
+  PENDIENTE: 'wait',
+  RECHAZADO: 'alert',
+  ANULADO: 'alert',
+  REEMBOLSADO: 'neutral',
+}
+
+const ICONO_PAGO: Record<EstadoTransaccion, LucideIcon> = {
+  APROBADO: Check,
+  PENDIENTE: Clock,
+  RECHAZADO: XCircle,
+  ANULADO: XCircle,
+  REEMBOLSADO: RotateCcw,
 }
 
 function fechaHora(valor: string) {
@@ -119,10 +142,16 @@ export function ResidentDashboard({
         </div>
 
         <div className={styles.lateral}>
-          <section className={styles.estado} aria-labelledby="estado-titulo">
-            <h2 id="estado-titulo" className="t-section">
-              Estado de cuenta
-            </h2>
+          <section className={`hoja ${styles.estado}`} aria-labelledby="estado-titulo">
+            <header className={styles.proximasCabecera}>
+              <h2 id="estado-titulo" className="t-section">
+                Estado de cuenta
+              </h2>
+              <Link href="/residente/pagos#historial" prefetch={false} className="btn" data-variant="quiet" data-size="sm">
+                Ver historial
+              </Link>
+            </header>
+
             <div className={styles.estadoFila}>
               {cuenta ? (
                 alDia ? (
@@ -150,23 +179,28 @@ export function ResidentDashboard({
               <ul className={styles.pagos} aria-label="Últimos pagos">
                 {ultimosPagos.map((p) => (
                   <li key={p.id}>
-                    <span className="t-nota">{fechaLarga(p.fechaPago)}</span>
-                    <strong>{pesos(p.monto)}</strong>
-                    <span className="chip" data-tone={p.estado === 'APROBADO' ? 'ok' : 'wait'}>
-                      {ESTADO_TRANSACCION_TEXTO[p.estado]}
+                    <span className={styles.pagoFecha}>
+                      <span className="t-nota">{fechaLarga(p.fechaPago)}</span>
+                      <Chip tono={TONO_PAGO[p.estado]} icono={ICONO_PAGO[p.estado]}>
+                        {ESTADO_TRANSACCION_TEXTO[p.estado]}
+                      </Chip>
                     </span>
+                    <strong className={styles.pagoMonto}>{pesos(p.monto)}</strong>
                   </li>
                 ))}
               </ul>
             )}
-          </section>
 
-          {auto && (
-            <p className="t-nota">
-              Auto registrado: placa <strong>{auto.placa}</strong>
-              {auto.parqueaderoId ? ` · parqueadero ${auto.parqueaderoId}` : ''}.
-            </p>
-          )}
+            {auto && (
+              <p className={`t-nota ${styles.estadoPie}`}>
+                <Car aria-hidden="true" />
+                <span>
+                  Auto registrado: placa <strong>{auto.placa}</strong>
+                  {auto.parqueaderoId ? ` · parqueadero ${auto.parqueaderoId}` : ''}
+                </span>
+              </p>
+            )}
+          </section>
         </div>
       </div>
 
@@ -178,7 +212,7 @@ export function ResidentDashboard({
                 Reservas e invitaciones
               </h2>
               <p className="t-nota">
-                {reservas.length} {reservas.length === 1 ? 'reserva' : 'reservas'} · {activos} de {invitados.length}{' '}
+                {reservas.length} {reservas.length === 1 ? 'reserva próxima' : 'reservas próximas'} · {activos} de {invitados.length}{' '}
                 invitados con autorización vigente
               </p>
             </div>
@@ -194,22 +228,16 @@ export function ResidentDashboard({
               {reservas.slice(0, 3).map((r) => (
                 <li key={`reserva-${r.id}`} className={styles.actividad}>
                   <p className={styles.cuando}>
-                    {horaLegible(r.horaInicio)}
-                    <span className={styles.mes}>hasta {horaLegible(r.horaFin)}</span>
+                    {horaReserva(r.fechaHoraInicio)}
+                    <span className={styles.mes}>
+                      {diaReserva(r.fechaHoraInicio)} · hasta {horaReserva(r.fechaHoraFin)}
+                    </span>
                   </p>
                   <div>
                     <h3 className={styles.lugar}>{r.nombreZonaComun}</h3>
                     <p className="t-nota">{r.direccionInmueble}</p>
                   </div>
-                  {r.enCurso ? (
-                    <Chip tono="info" icono={Clock}>
-                      En curso
-                    </Chip>
-                  ) : (
-                    <Chip tono="ok" icono={Check}>
-                      Confirmada
-                    </Chip>
-                  )}
+                  <ChipReserva estado={r.estado} />
                 </li>
               ))}
               {invitados.slice(0, 3).map((i) => (

@@ -10,6 +10,7 @@ import type {
   Notificacion,
 } from '@/lib/api/tipos'
 import { enviarNotificacion } from '@/lib/admin/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -34,8 +35,8 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
   const notificacionId = Number(params.notificacion)
 
   const [inmueblesR, propiasR, lecturaR] = await Promise.all([
-    apiConSesion<InmuebleResumen[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' }),
-    apiConSesion<Notificacion[]>('admin', RUTAS_API.notificaciones, { metodo: 'GET' }),
+    apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
+    apiConSesion<Listado<Notificacion>>('admin', listado(RUTAS_API.notificaciones), { metodo: 'GET' }),
     notificacionId > 0
       ? apiConSesion<LecturaNotificacion>('admin', RUTAS_API.notificacionLectura(notificacionId), {
           metodo: 'GET',
@@ -43,8 +44,8 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
       : Promise.resolve({ ok: true as const, datos: null }),
   ])
 
-  const inmuebles = inmueblesR.ok && Array.isArray(inmueblesR.datos) ? inmueblesR.datos : []
-  const propias = propiasR.ok && Array.isArray(propiasR.datos) ? propiasR.datos : []
+  const inmuebles = listaDe(inmueblesR)
+  const propias = listaDe(propiasR)
 
   return (
     <div className={styles.pagina}>
@@ -159,7 +160,7 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
         ) : propias.length === 0 ? (
           <Vacio>No tienes notificaciones.</Vacio>
         ) : (
-          <ul style={{ display: 'grid', gap: '0.75rem' }}>
+          <ul className={styles.fichas}>
             {propias.map((n) => (
               <li key={n.id} className={styles.consulta}>
                 <div className={styles.panelCabecera} style={{ marginBottom: 0 }}>

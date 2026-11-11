@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { errorDeApi, exito, numero, texto, type EstadoAccion } from '@/lib/api/acciones'
+import { intervaloReserva } from '@/lib/api/reservas'
 import type { IniciarPago } from '@/lib/api/tipos'
 import { apiConSesion } from '@/lib/auth/sesion'
 import { RUTAS_API } from '@/lib/auth/config'
@@ -90,10 +91,14 @@ export async function registrarAuto(_previo: EstadoAccion, datos: FormData): Pro
 
 export async function reservar(_previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
   const zonaComunId = numero(datos, 'zonaComunId')
-  const hora = texto(datos, 'hora')
-  if (!zonaComunId || !hora) return { estado: 'error', mensaje: 'Elige la zona y la hora.' }
+  const intervalo = intervaloReserva(texto(datos, 'fecha'), texto(datos, 'inicio'), texto(datos, 'fin'))
+  if (!zonaComunId || !intervalo) {
+    return { estado: 'error', mensaje: 'Elige la zona, el día y las horas de inicio y fin.' }
+  }
 
-  const r = await apiConSesion('residente', RUTAS_API.reservas, { body: { zonaComunId, hora } })
+  const r = await apiConSesion('residente', RUTAS_API.reservas, {
+    body: { zonaComunId, fechaHoraInicio: intervalo.inicio, fechaHoraFin: intervalo.fin },
+  })
   if (!r.ok) return errorDeApi(r, 'No se pudo hacer la reserva.')
   refrescarResidente()
   return exito('Reserva confirmada.')

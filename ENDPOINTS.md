@@ -4,7 +4,7 @@ Contrato entre el backend (`HorizontalSoftware-Back-End`, Spring Boot) y el fron
 
 - **URL base:** `http://localhost:8080` (puerto por defecto de Spring). Todas las rutas empiezan por `/api`.
 - **CORS:** el origen permitido es `http://localhost:3000` (`app.cors.allowed-origins`). Headers permitidos: `Authorization`, `Content-Type`, `X-Api-Key`.
-- **Formato:** JSON. Fechas `yyyy-MM-dd`, horas `HH:mm` (o `HH:mm:ss`). Dinero como número decimal (COP).
+- **Formato:** JSON. Fechas `yyyy-MM-dd`, horas `HH:mm` (o `HH:mm:ss`), fecha y hora `yyyy-MM-ddTHH:mm:ss` (ISO, **hora de Colombia**, sin zona horaria). Dinero como número decimal (COP).
 
 ## 1. Autenticación (OAuth2 + refresh token)
 
@@ -56,6 +56,31 @@ Todos los errores tienen esta forma (`errores` solo aparece en validaciones):
 | 409 | Conflicto de estado (duplicado, pago en estado no válido, zona sin cupo, etc.) |
 | 500 | Error inesperado |
 
+### Paginación de listados
+
+Todo endpoint que devuelve una lista está **paginado** (marcados `Pagina<T>` en las tablas). Parámetros de query, ambos opcionales:
+
+| Parámetro | Por defecto | Regla |
+|---|---|---|
+| `pagina` | `0` | Empieza en **0**. Entero ≥ 0 |
+| `tamano` | `20` | Entero de 1 a 100 |
+
+Un valor fuera de rango o que no sea entero responde **400** (no se recorta en silencio). Pedir una página más allá del final devuelve `contenido` vacío con los totales correctos.
+
+`Pagina<T>`:
+```json
+{
+  "contenido": [ /* T */ ],
+  "pagina": 0,
+  "tamano": 20,
+  "totalElementos": 137,
+  "totalPaginas": 7
+}
+```
+- El orden es estable entre páginas (cada listado desempata por `id`), así que una fila no se repite ni se salta al cambiar de página.
+- `totalPaginas` es `0` cuando no hay filas.
+- Los filtros propios de cada endpoint (`estado`, `inmuebleId`...) se combinan con la paginación: `totalElementos` cuenta solo lo filtrado.
+
 ## 3. Auth - `/api/auth`
 
 | Método | Ruta | Acceso | Cuerpo | Respuesta |
@@ -90,7 +115,7 @@ Todos los errores tienen esta forma (`errores` solo aparece en validaciones):
 | GET | `/api/admin/resumen?periodo=yyyy-MM-dd` | `periodo` opcional | 200 `ResumenAdmin` |
 | POST | `/api/admin/liquidaciones` | `Generar` | 201 `Liquidacion` |
 | POST | `/api/admin/liquidaciones/masiva` | `{periodo, fechaLimite?}` | 200 `{generadas, omitidas:[{inmuebleId, motivo}]}` |
-| GET | `/api/admin/liquidaciones?inmuebleId=&estado=&periodo=` | filtros opcionales | 200 `Liquidacion[]` |
+| GET | `/api/admin/liquidaciones?inmuebleId=&estado=&periodo=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Liquidacion>` (periodo más reciente primero) |
 | PATCH | `/api/admin/liquidaciones/{id}/mora` | - | 200 `Liquidacion` |
 | PATCH | `/api/admin/liquidaciones/{id}/al-dia` | - | 200 `Liquidacion` |
 
@@ -105,7 +130,7 @@ Todos: **ADMIN**.
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
 | POST | `/api/admin/inmuebles` | `{direccionInmueble, valorParqueadero?}` (formato `TORRE-APTO`, ej. `A-302`) | 201 `Detalle` |
-| GET | `/api/admin/inmuebles` | - | 200 `Resumen[]` |
+| GET | `/api/admin/inmuebles?pagina=&tamano=` | - | 200 `Pagina<Resumen>` (por dirección) |
 | GET | `/api/admin/inmuebles/{id}` | - | 200 `Detalle` |
 | PUT | `/api/admin/inmuebles/{id}/tarifas` | `{cuotaAdministracion, valorServiciosComunes, valorParqueadero?}` | 200 `Liquidacion` |
 | PUT | `/api/admin/inmuebles/{id}/multas` | `{valorMultas}` | 200 `Liquidacion` |
@@ -122,7 +147,7 @@ Todos: **ADMIN**.
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
 | POST | `/api/admin/usuarios` | `CrearUsuario` | 201 `Usuario` |
-| GET | `/api/admin/usuarios?tipo=&active=` | filtros opcionales | 200 `Usuario[]` |
+| GET | `/api/admin/usuarios?tipo=&active=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Usuario>` (por nombre) |
 | PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo) |
 
 `CrearUsuario`: `{tipoUsuario, identificacion, nombreCompleto, fechaNacimiento?, correoElectronico, contrasena, inmuebleId?, inicioContrato?, venceContrato?}`.
@@ -132,16 +157,16 @@ Todos: **ADMIN**.
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
 | POST | `/api/admin/zonas-comunes` | `{nombreZonaComun, capacidad, horaInicio, horaFin, aplicarATodosLosInmuebles?}` | 201 `Zona` |
-| GET | `/api/admin/zonas-comunes` | - | 200 `Zona[]` |
+| GET | `/api/admin/zonas-comunes?pagina=&tamano=` | - | 200 `Pagina<Zona>` (por nombre) |
 | PATCH | `/api/admin/zonas-comunes/{id}/estado` | - | 200 `Zona` (alterna activa/inactiva) |
 
-`Zona`: `{id, nombreZonaComun, capacidad, horaInicio, horaFin, isActive, reservasActuales}`. `aplicarATodosLosInmuebles` es `true` por defecto.
+`Zona`: `{id, nombreZonaComun, capacidad, horaInicio, horaFin, isActive, reservasActuales}`. `aplicarATodosLosInmuebles` es `true` por defecto. `capacidad` es cuántas reservas puede tener la zona **al mismo tiempo**. `reservasActuales` cuenta las reservas que aún no terminan (programadas o en curso).
 
 ### 4.5 Reglas de reserva - `/api/admin` (todos **ADMIN**)
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
 | POST | `/api/admin/reglas-reserva` | `CrearRegla` | 201 `Regla` |
-| GET | `/api/admin/reglas-reserva` | - | 200 `Regla[]` |
+| GET | `/api/admin/reglas-reserva?pagina=&tamano=` | - | 200 `Pagina<Regla>` |
 | PUT | `/api/admin/reglas-reserva/{id}` | `{anticipacionMinimaHoras, duracionMaximaHoras}` | 200 `Regla` |
 | PATCH | `/api/admin/rompimientos/{id}/aplicar` | - | 200 `Rompimiento` |
 | PATCH | `/api/admin/rompimientos/{id}/inactivar` | - | 200 `Rompimiento` |
@@ -161,7 +186,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 ### 4.7 Pagos y pasarela - `/api/admin` (todos **ADMIN**)
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
-| GET | `/api/admin/pagos?inmuebleId=&estado=` | filtros opcionales (máx. 200 resultados, más recientes primero) | 200 `Pago[]` |
+| GET | `/api/admin/pagos?inmuebleId=&estado=&pagina=&tamano=` | filtros opcionales (más recientes primero) | 200 `Pagina<Pago>` |
 | POST | `/api/admin/pagos/{id}/anular` | - | 200 `Pago` (solo `PENDIENTE`) |
 | POST | `/api/admin/pagos/{id}/reembolso` | - | 200 `Pago` (solo `APROBADO`) |
 | GET | `/api/admin/pasarela` | - | 200 `Pasarela` |
@@ -179,7 +204,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
 | GET | `/api/residente/mi-cuenta` | - | 200 `EstadoCuenta` |
-| GET | `/api/residente/pagos` | - | 200 `Pago[]` (historial del inmueble) |
+| GET | `/api/residente/pagos?pagina=&tamano=` | - | 200 `Pagina<Pago>` (historial del inmueble, más recientes primero) |
 | POST | `/api/residente/pagos` | `{metodoPago}` | 201 `{pago, urlCheckout}` |
 | GET | `/api/residente/pagos/{id}` | - | 200 `Pago` (403 si es de otro inmueble) |
 
@@ -190,7 +215,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 ### 5.2 Invitados y auto
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
-| GET | `/api/residente/invitados` | - | 200 `Invitado[]` |
+| GET | `/api/residente/invitados?pagina=&tamano=` | - | 200 `Pagina<Invitado>` (por nombre) |
 | POST | `/api/residente/invitados` | `CrearInvitado` | 201 `Invitado` |
 | PATCH | `/api/residente/invitados/{id}/estado` | - | 200 `{invitadoId, active}` (alterna) |
 | PATCH | `/api/residente/invitados/estado` | `{invitadoIds: [..]}` | 200 `{cambios:[{invitadoId, active}]}` |
@@ -204,21 +229,52 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 ### 5.3 Zonas comunes y reservas
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
-| GET | `/api/residente/zonas-comunes` | - | 200 `Zona[]` (las activas asignadas a su inmueble) |
-| GET | `/api/residente/zonas-comunes/{id}/disponibilidad?hora=HH:mm` | `hora` obligatoria | 200 `Disponibilidad` |
-| GET | `/api/residente/reservas` | - | 200 `Reserva[]` (las suyas) |
-| POST | `/api/residente/reservas` | `{zonaComunId, hora}` | 201 `Reserva` |
-| DELETE | `/api/residente/reservas/{id}` | - | 204 (solo quien reservó) |
+| GET | `/api/residente/zonas-comunes?pagina=&tamano=` | - | 200 `Pagina<Zona>` (las activas asignadas a su inmueble) |
+| GET | `/api/residente/zonas-comunes/{id}/disponibilidad?inicio=&fin=` | `inicio` y `fin` obligatorios (`yyyy-MM-ddTHH:mm`) | 200 `Disponibilidad` |
+| GET | `/api/residente/reservas?estado=&pagina=&tamano=` | `estado` opcional: `PROGRAMADA`, `EN_CURSO` o `FINALIZADA` | 200 `Pagina<Reserva>` (las suyas, la de inicio más reciente primero) |
+| POST | `/api/residente/reservas` | `{zonaComunId, fechaHoraInicio, fechaHoraFin}` | 201 `Reserva` |
+| DELETE | `/api/residente/reservas/{id}` | - | 204 (solo quien reservó y solo si está `PROGRAMADA`) |
 
-- `Disponibilidad`: `{zonaComunId, hora, horarioValido, disponible, habilitado, mensaje}`.
-- `Reserva`: `{id, zonaComunId, nombreZonaComun, horaInicio, horaFin, enCurso, duenoReservaId, nombreDueno, inmuebleId, direccionInmueble}`. `enCurso`: la zona está abierta ahora y activa.
-- **Reglas al reservar:** la zona debe estar asignada y activa para su inmueble (403 si no); el residente debe estar **habilitado** (cuenta activa, inmueble activo y sin mora; 403 si no); la `hora` debe caer dentro del horario de la zona (409); la zona debe tener cupo (409); no se reserva dos veces la misma zona (409).
-- El modelo de reserva (según el diagrama de clases) no guarda fecha: el cupo cuenta las reservas existentes de la zona.
+Cada reserva ocupa un intervalo de fecha y hora: desde `fechaHoraInicio` (incluida) hasta `fechaHoraFin` (excluida), en **hora de Colombia**. Ejemplo:
+
+```json
+POST /api/residente/reservas
+{ "zonaComunId": 3, "fechaHoraInicio": "2026-11-20T10:00:00", "fechaHoraFin": "2026-11-20T12:00:00" }
+```
+
+Los segundos se ignoran (se guarda al minuto).
+
+- `Reserva`: `{id, zonaComunId, nombreZonaComun, fechaHoraInicio, fechaHoraFin, estado, enCurso, cancelable, duenoReservaId, nombreDueno, inmuebleId, direccionInmueble}`.
+- **`estado`** lo calcula el servidor con la hora actual de Colombia, en cada respuesta (no se guarda):
+
+  | `estado` | Cuándo | `cancelable` |
+  |---|---|---|
+  | `PROGRAMADA` | Aún no empieza | `true` |
+  | `EN_CURSO` | Ya empezó y no ha terminado | `false` |
+  | `FINALIZADA` | Ya terminó (desde `fechaHoraFin`) | `false` |
+
+  `enCurso` es `true` si la reserva está `EN_CURSO` **y** la zona sigue activa. El front debe mostrar el `estado` tal cual (por ejemplo, la etiqueta **Finalizada**) y ofrecer el botón de cancelar solo si `cancelable` es `true`.
+- `Disponibilidad`: `{zonaComunId, fechaHoraInicio, fechaHoraFin, horarioValido, cumpleReglas, hayCupo, habilitado, disponible, mensaje}`. Aplica **las mismas validaciones** que reservar, sin guardar nada. `disponible` es `true` solo si todas se cumplen; `mensaje` es `"Disponible"` o el primer motivo por el que no se puede.
+- **Validaciones al reservar** (y al consultar disponibilidad), en este orden; la respuesta trae el primer motivo que falle:
+
+  | # | Regla | Error |
+  |---|---|---|
+  | 1 | `fechaHoraFin` posterior a `fechaHoraInicio` (y ambos enviados) | 400 |
+  | 2 | La reserva empieza en el futuro | 400 |
+  | 3 | La zona está asignada a su inmueble y activa | 403 |
+  | 4 | El residente está **habilitado**: cuenta activa, inmueble activo y sin mora | 403 |
+  | 5 | Todo el intervalo cabe en el horario de la zona. Con horario que cruza la medianoche (ej. `20:00`-`02:00`) la reserva puede terminar al día siguiente | 409 |
+  | 6 | Reglas activas de la zona (sección 4.5): empieza con al menos `anticipacionMinimaHoras` de anticipación y dura como máximo `duracionMaximaHoras`. Si la zona tiene varias reglas activas gana la más estricta; sin reglas no hay límite | 409 |
+  | 7 | Hay cupo: las reservas de la zona que se cruzan con ese intervalo son menos que la `capacidad` | 409 |
+  | 8 | No se cruza con otra reserva suya de la misma zona (una que empieza justo cuando termina la otra sí se permite) | 409 |
+- **Cancelar:** solo el dueño (403) y solo mientras esté `PROGRAMADA` (409 si ya está `EN_CURSO` o `FINALIZADA`). La penalidad por cancelación tardía de la regla (`horasAntelacionPenalidad`, `tarifaPenalidad`) todavía no se cobra.
+- Al reservar, el residente recibe una notificación con el día y la hora (`Su reserva de BBQ para el 2026-11-20 de 10:00 a 12:00 quedo registrada.`).
+- Las reservas creadas antes de este cambio no tenían fecha: la migración `V2` las cerró como `FINALIZADA` (una hora que termina en el momento de migrar), así que no ocupan cupo.
 
 ## 6. Notificaciones - `/api/notificaciones` (**Autenticado**)
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/api/notificaciones` | 200 `Notificacion[]` (las del usuario) |
+| GET | `/api/notificaciones?pagina=&tamano=` | 200 `Pagina<Notificacion>` (las del usuario, más recientes primero) |
 | PUT | `/api/notificaciones/leida` | 204 (marca todas como leídas) |
 
 `Notificacion`: `{id, mensaje, tipoNotificacion, fechaEnvio}` (`fechaEnvio` en formato `yyyy-MM-ddTHH:mm:ss`).
@@ -229,7 +285,7 @@ Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se e
 |---|---|---|---|
 | GET | `/api/pagos/{id}/comprobante` | ADMIN o RESIDENTE | 200 `{referencia, comprobante}` (texto; solo pagos `APROBADO`/`REEMBOLSADO`, 409 si no) |
 | GET | `/api/pagos/estado/{referencia}` | ADMIN o RESIDENTE | 200 `{referencia, estado}` |
-| GET | `/api/invitados/{id}/residentes` | ADMIN o VIGILANTE | 200 `Anfitrion[]` |
+| GET | `/api/invitados/{id}/residentes?pagina=&tamano=` | ADMIN o VIGILANTE | 200 `Pagina<Anfitrion>` |
 | GET | `/api/autos/{id}/duenos?inmuebleId=` | ADMIN o VIGILANTE | 200 `{autoId, inmuebleId, duenos:[..]}` |
 
 Un residente solo accede a pagos de su propio inmueble (403 si no).
@@ -256,12 +312,12 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 ## 9. Vigilante - `/api/vigilante` (todos **VIGILANTE**)
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/api/vigilante/reservas` | 200 `Reserva[]` (todas) |
+| GET | `/api/vigilante/reservas?estado=&pagina=&tamano=` | 200 `Pagina<Reserva>` (todas, por `fechaHoraInicio`; `estado` opcional como en 5.3) |
 | GET | `/api/vigilante/zonas-comunes/acceso?identificacion=` | 200 `Acceso` |
 | GET | `/api/vigilante/invitados/{identificacion}` | 200 `InvitadoConsulta` |
 | POST | `/api/vigilante/invitados/{identificacion}/ingreso` | 200 `Ingreso` |
 
-- `Acceso`: `{identificacion, nombreCompleto, permitido, motivo, zonasPermitidas:[{zonaComunId, nombreZonaComun, horaInicio, horaFin}]}`. `permitido`: la persona puede entrar ahora a alguna zona (la reservó ella o su anfitrión).
+- `Acceso`: `{identificacion, nombreCompleto, permitido, motivo, zonasPermitidas:[{zonaComunId, nombreZonaComun, horaInicio, horaFin, reservaHasta}]}`. `permitido`: la persona tiene **ahora** una reserva `EN_CURSO` de una zona activa (suya o de su anfitrión, si es invitado). Una reserva solo programada o ya finalizada no da acceso. `horaInicio`/`horaFin` son el horario de la zona y `reservaHasta` es cuándo termina la reserva que da el acceso.
 - `InvitadoConsulta`: `{existe, vigente, invitado}`.
 - `Ingreso`: `{permitido, mensaje, visitante, inmueblesNotificados:[..]}`. Registrar el ingreso notifica a los inmuebles anfitriones.
 

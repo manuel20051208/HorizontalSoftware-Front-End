@@ -6,6 +6,7 @@ import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
 import { ESTADO_CARTERA_TEXTO, type InmuebleResumen } from '@/lib/api/tipos'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 import { enviarRecordatorio } from '@/lib/admin/acciones'
@@ -21,8 +22,8 @@ const TONO = {
 
 export default async function InmueblesPage() {
   const { nombre } = await requerirSesion('admin')
-  const r = await apiConSesion<InmuebleResumen[]>('admin', RUTAS_API.inmuebles, { metodo: 'GET' })
-  const inmuebles = r.ok && Array.isArray(r.datos) ? r.datos : []
+  const r = await apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' })
+  const inmuebles = listaDe(r)
 
   return (
     <div className={styles.pagina}>

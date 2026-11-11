@@ -5,6 +5,7 @@ import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/
 import styles from '@/components/gestion/gestion.module.css'
 import type { Notificacion } from '@/lib/api/tipos'
 import { marcarNotificacionesLeidas } from '@/lib/cuenta/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -23,8 +24,8 @@ function fechaHora(valor: string) {
 
 export default async function NotificacionesResidentePage() {
   await requerirSesion('residente')
-  const r = await apiConSesion<Notificacion[]>('residente', RUTAS_API.notificaciones, { metodo: 'GET' })
-  const notificaciones = r.ok && Array.isArray(r.datos) ? [...r.datos].sort((a, b) => b.id - a.id) : []
+  const r = await apiConSesion<Listado<Notificacion>>('residente', listado(RUTAS_API.notificaciones), { metodo: 'GET' })
+  const notificaciones = listaDe(r).sort((a, b) => b.id - a.id)
 
   return (
     <div className={styles.pagina}>
@@ -51,15 +52,11 @@ export default async function NotificacionesResidentePage() {
         ) : notificaciones.length === 0 ? (
           <Vacio>No tienes avisos todavía.</Vacio>
         ) : (
-          <ul style={{ display: 'grid', gap: '0.75rem' }}>
+          <ul className={styles.fichas}>
             {notificaciones.map((n) => (
-              <li
-                key={n.id}
-                className="hoja"
-                style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '1rem 1.25rem' }}
-              >
-                <Bell aria-hidden="true" style={{ flex: 'none', width: '1.25rem', height: '1.25rem', marginTop: '0.15rem' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <li key={n.id} className={`hoja ${styles.ficha}`}>
+                <Bell aria-hidden="true" />
+                <div className={styles.fichaCuerpo}>
                   <p>{n.mensaje}</p>
                   <p className="t-nota" style={{ marginTop: '0.25rem' }}>
                     {fechaHora(n.fechaEnvio)}

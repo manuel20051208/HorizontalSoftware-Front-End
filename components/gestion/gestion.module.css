@@ -475,6 +475,50 @@ textarea.entrada {
   background: var(--alerta-tinte);
 }
 
+.consultaTitulo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 650;
+}
+
+.consultaTitulo svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+}
+
+/* Cada validación de la consulta de disponibilidad, con su resultado */
+.chequeos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.375rem 1rem;
+  font-size: 0.875rem;
+}
+
+.chequeos li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--tinta-2);
+}
+
+.chequeos svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--alerta);
+}
+
+.chequeos li[data-ok='true'] {
+  color: var(--tinta);
+}
+
+.chequeos li[data-ok='true'] svg {
+  color: var(--ok);
+}
+
 /* ---------- Utilidades de composición (reemplazan estilos sueltos) ---------- */
 
 /* Un campo dentro de la barra de filtros: crece pero no se desборда */
@@ -542,9 +586,150 @@ textarea.entrada {
   gap: 1.25rem;
 }
 
+/* Lista de fichas (avisos, dueños de un auto): una columna que no se estira */
+.fichas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+/* Ficha con ícono, cuerpo y chip; en pantallas angostas el chip baja bajo el texto */
+.ficha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.ficha > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.15rem;
+}
+
+.fichaCuerpo {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .ficha {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.5rem 0.75rem;
+    padding: 1rem;
+  }
+
+  .ficha > :last-child:not(.fichaCuerpo) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* Ficha de dos datos (nombre · dirección) que se apilan si no caben */
+.fichaPar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  overflow-wrap: anywhere;
+}
+
 /* Acciones alineadas a la derecha dentro de una celda de tabla */
 .celdaAccion .accionesCabecera {
   justify-content: flex-end;
+}
+
+/* ---------- Paginación ---------- */
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--linea);
+}
+
+.paginaNumeros {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.paginaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.paginaPaso,
+.paginaNumero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 0.625rem;
+  border-radius: var(--radio-control);
+  color: var(--sello);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  font-variant-numeric: lining-nums tabular-nums;
+  text-decoration: none;
+}
+
+.paginaPaso svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+a.paginaPaso:hover,
+.paginaNumero:hover {
+  background: var(--sello-tinte);
+}
+
+.paginaPaso[aria-disabled='true'] {
+  color: var(--tinta-2);
+  opacity: 0.45;
+}
+
+.paginaNumero[aria-current='page'] {
+  background: var(--tinta);
+  color: #ffffff;
+}
+
+.paginaHueco {
+  color: var(--tinta-2);
+}
+
+@media (pointer: coarse) {
+  .paginaPaso,
+  .paginaNumero {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* En el teléfono las flechas van sin texto para que los números quepan */
+@media (max-width: 480px) {
+  .paginaPasoTexto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .paginaPaso {
+    padding: 0;
+  }
 }
 
 /* ---------- Pantallas angostas ---------- */
@@ -591,8 +776,11 @@ textarea.entrada {
     display: block;
   }
 
+  /* minmax(0, 1fr): sin esto la columna implícita se estira al contenido más largo
+     y la tarjeta se sale del panel (o del teléfono). */
   .tabla[data-cards] tr {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem 0.875rem;
     padding: 0.875rem 0;
     border-bottom: 1px solid var(--linea);
@@ -614,8 +802,15 @@ textarea.entrada {
     overflow-wrap: anywhere;
   }
 
+  /* El valor va a la derecha de su etiqueta y, si no cabe, baja de línea: en la
+     tarjeta no aplica el nowrap de las columnas (fechas, horarios, referencias). */
+  .tabla[data-cards] td[data-label],
   .tabla[data-cards] td.derecha {
-    text-align: left !important;
+    text-align: right !important;
+  }
+
+  .tabla[data-cards] td.ahora {
+    white-space: normal;
   }
 
   /* El nombre de la columna, tomado del encabezado, antes del valor */
@@ -630,6 +825,8 @@ textarea.entrada {
   /* La celda principal (el nombre) ocupa su propia línea, sin etiqueta */
   .tabla[data-cards] td.celdaPrincipal {
     display: block;
+    order: -1;
+    text-align: left !important;
   }
 
   .tabla[data-cards] td.celdaPrincipal::before {

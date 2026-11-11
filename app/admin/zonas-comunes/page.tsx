@@ -7,6 +7,7 @@ import styles from '@/components/gestion/gestion.module.css'
 import { horaLegible } from '@/lib/api/acciones'
 import type { Zona } from '@/lib/api/tipos'
 import { alternarZona, crearZona } from '@/lib/admin/acciones'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -14,8 +15,8 @@ export const metadata: Metadata = { title: 'Zonas comunes' }
 
 export default async function ZonasPage() {
   await requerirSesion('admin')
-  const r = await apiConSesion<Zona[]>('admin', RUTAS_API.zonasComunes, { metodo: 'GET' })
-  const zonas = r.ok && Array.isArray(r.datos) ? r.datos : []
+  const r = await apiConSesion<Listado<Zona>>('admin', listado(RUTAS_API.zonasComunes), { metodo: 'GET' })
+  const zonas = listaDe(r)
 
   return (
     <div className={styles.pagina}>
@@ -29,7 +30,16 @@ export default async function ZonasPage() {
           <FormularioAccion accion={crearZona} texto="Crear zona">
             <div className={styles.rejilla}>
               <Campo nombre="nombreZonaComun" etiqueta="Nombre" maxLength={100} requerido ancho />
-              <Campo nombre="capacidad" etiqueta="Capacidad" tipo="number" min={1} step={1} requerido inputMode="numeric" />
+              <Campo
+                nombre="capacidad"
+                etiqueta="Capacidad"
+                tipo="number"
+                min={1}
+                step={1}
+                requerido
+                inputMode="numeric"
+                ayuda="Cuántas reservas puede tener la zona al mismo tiempo."
+              />
               <Campo nombre="horaInicio" etiqueta="Hora de inicio" tipo="time" requerido />
               <Campo nombre="horaFin" etiqueta="Hora de fin" tipo="time" requerido />
             </div>
@@ -46,8 +56,12 @@ export default async function ZonasPage() {
           <ul className={`t-nota ${styles.lista}`}>
             <li>La zona debe estar activa y asignada al inmueble del residente.</li>
             <li>El residente debe estar habilitado: cuenta e inmueble activos y sin mora.</li>
-            <li>La hora debe caer dentro del horario y la zona debe tener cupo.</li>
-            <li>Un residente no puede reservar dos veces la misma zona.</li>
+            <li>Cada reserva tiene día, hora de inicio y hora de fin, y empieza en el futuro.</li>
+            <li>Todo el intervalo debe caber en el horario de la zona; si el horario cruza la medianoche, puede terminar al día siguiente.</li>
+            <li>Se aplican las reglas activas de la zona: anticipación mínima y duración máxima (gana la más estricta).</li>
+            <li>Hay cupo si las reservas que se cruzan con ese intervalo son menos que la capacidad.</li>
+            <li>Un residente no puede tener dos reservas que se crucen en la misma zona.</li>
+            <li>Solo se cancela mientras está programada; en curso o finalizada ya no.</li>
           </ul>
         </Panel>
       </div>

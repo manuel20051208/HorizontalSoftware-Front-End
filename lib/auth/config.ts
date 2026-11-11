@@ -86,9 +86,9 @@ export const RUTAS_API = {
   invitadosEstado: '/api/residente/invitados/estado', // PATCH { invitadoIds }
   auto: '/api/residente/auto', // GET · POST { placa, parqueaderoId? }
   zonasResidente: '/api/residente/zonas-comunes', // GET -> Zona[]
-  disponibilidad: (id: number, hora: string) =>
-    `/api/residente/zonas-comunes/${id}/disponibilidad?${new URLSearchParams({ hora })}`, // GET
-  reservas: '/api/residente/reservas', // GET · POST { zonaComunId, hora }
+  disponibilidad: (id: number, inicio: string, fin: string) =>
+    `/api/residente/zonas-comunes/${id}/disponibilidad?${new URLSearchParams({ inicio, fin })}`, // GET · yyyy-MM-ddTHH:mm
+  reservas: '/api/residente/reservas', // GET ?estado=&pagina=&tamano= · POST { zonaComunId, fechaHoraInicio, fechaHoraFin }
   reserva: (id: number) => `/api/residente/reservas/${id}`, // DELETE
 
   // Notificaciones del usuario
@@ -103,7 +103,7 @@ export const RUTAS_API = {
     `/api/autos/${id}/duenos${inmuebleId ? `?${new URLSearchParams({ inmuebleId: String(inmuebleId) })}` : ''}`,
 
   // Vigilante
-  vigilanteReservas: '/api/vigilante/reservas', // GET -> Reserva[]
+  vigilanteReservas: '/api/vigilante/reservas', // GET ?estado=&pagina=&tamano= -> Pagina<Reserva>
   vigilanteAcceso: (identificacion: number | string) =>
     `/api/vigilante/zonas-comunes/acceso?${new URLSearchParams({ identificacion: String(identificacion) })}`,
   vigilanteInvitado: (identificacion: number | string) => `/api/vigilante/invitados/${identificacion}`,
