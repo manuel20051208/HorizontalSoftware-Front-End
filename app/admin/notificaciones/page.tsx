@@ -159,7 +159,7 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
         ) : propias.length === 0 ? (
           <Vacio>No tienes notificaciones.</Vacio>
         ) : (
-          <ul style={{ display: 'grid', gap: '0.75rem' }}>
+          <ul className={styles.fichas}>
             {propias.map((n) => (
               <li key={n.id} className={styles.consulta}>
                 <div className={styles.panelCabecera} style={{ marginBottom: 0 }}>

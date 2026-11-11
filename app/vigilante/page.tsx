@@ -103,12 +103,12 @@ export default async function SecurityPage({ searchParams }: Props) {
               <p style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {acceso?.permitido ? (
                   <>
-                    <ShieldCheck aria-hidden="true" style={{ width: '1.25rem' }} />
+                    <ShieldCheck aria-hidden="true" style={{ flex: 'none', width: '1.25rem' }} />
                     Puede ingresar{acceso.nombreCompleto ? `: ${acceso.nombreCompleto}` : ''}
                   </>
                 ) : (
                   <>
-                    <ShieldX aria-hidden="true" style={{ width: '1.25rem' }} />
+                    <ShieldX aria-hidden="true" style={{ flex: 'none', width: '1.25rem' }} />
                     No puede ingresar ahora{acceso?.nombreCompleto ? `: ${acceso.nombreCompleto}` : ''}
                   </>
                 )}
@@ -221,9 +221,9 @@ export default async function SecurityPage({ searchParams }: Props) {
           )}
           {duenos &&
             (duenos.duenos.length > 0 ? (
-              <ul style={{ display: 'grid', gap: '0.5rem' }}>
+              <ul className={gestion.fichas}>
                 {duenos.duenos.map((d) => (
-                  <li key={d.id} className="hoja" style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                  <li key={d.id} className={`hoja ${gestion.fichaPar}`}>
                     <span className="t-voz">{d.nombreCompleto}</span>
                     <span className="t-nota">{d.direccionInmueble}</span>
                   </li>
@@ -242,7 +242,7 @@ export default async function SecurityPage({ searchParams }: Props) {
             <Vacio>No hay reservas registradas.</Vacio>
           ) : (
             <div className={gestion.tablaMarco}>
-              <table className={gestion.tabla}>
+              <table className={gestion.tabla} data-cards>
                 <caption className="sr-only">Reservas de zonas comunes</caption>
                 <thead>
                   <tr>
@@ -256,13 +256,13 @@ export default async function SecurityPage({ searchParams }: Props) {
                 <tbody>
                   {reservas.map((r) => (
                     <tr key={r.id}>
-                      <td className={gestion.ahora}>
+                      <td className={`t-columna ${gestion.ahora}`} data-label="Horario">
                         {horaLegible(r.horaInicio)} a {horaLegible(r.horaFin)}
                       </td>
-                      <td className={`t-voz ${gestion.nombre}`}>{r.nombreZonaComun}</td>
-                      <td>{r.nombreDueno}</td>
-                      <td className={gestion.ahora}>{r.direccionInmueble}</td>
-                      <td>
+                      <td className={`t-voz ${gestion.nombre} ${gestion.celdaPrincipal}`}>{r.nombreZonaComun}</td>
+                      <td data-label="Reservó">{r.nombreDueno}</td>
+                      <td className={gestion.ahora} data-label="Apartamento">{r.direccionInmueble}</td>
+                      <td data-label="Estado">
                         {r.enCurso ? (
                           <span className="chip" data-tone="info">
                             <Clock aria-hidden="true" />

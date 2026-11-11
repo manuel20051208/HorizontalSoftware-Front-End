@@ -191,6 +191,20 @@
   border-top: 1px solid var(--linea);
 }
 
+/* El texto toma el ancho; el chip no lo aplasta ni se sale del panel */
+.comunicado > div {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .comunicado {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+}
+
 .comunicadoTitulo {
   margin-bottom: 0.25rem;
   font-size: 1.0625rem;

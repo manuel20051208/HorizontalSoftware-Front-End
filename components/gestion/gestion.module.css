@@ -542,6 +542,57 @@ textarea.entrada {
   gap: 1.25rem;
 }
 
+/* Lista de fichas (avisos, dueños de un auto): una columna que no se estira */
+.fichas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+/* Ficha con ícono, cuerpo y chip; en pantallas angostas el chip baja bajo el texto */
+.ficha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.ficha > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.15rem;
+}
+
+.fichaCuerpo {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .ficha {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.5rem 0.75rem;
+    padding: 1rem;
+  }
+
+  .ficha > :last-child:not(.fichaCuerpo) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* Ficha de dos datos (nombre · dirección) que se apilan si no caben */
+.fichaPar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  overflow-wrap: anywhere;
+}
+
 /* Acciones alineadas a la derecha dentro de una celda de tabla */
 .celdaAccion .accionesCabecera {
   justify-content: flex-end;
@@ -591,8 +642,11 @@ textarea.entrada {
     display: block;
   }
 
+  /* minmax(0, 1fr): sin esto la columna implícita se estira al contenido más largo
+     y la tarjeta se sale del panel (o del teléfono). */
   .tabla[data-cards] tr {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem 0.875rem;
     padding: 0.875rem 0;
     border-bottom: 1px solid var(--linea);
@@ -614,8 +668,15 @@ textarea.entrada {
     overflow-wrap: anywhere;
   }
 
+  /* El valor va a la derecha de su etiqueta y, si no cabe, baja de línea: en la
+     tarjeta no aplica el nowrap de las columnas (fechas, horarios, referencias). */
+  .tabla[data-cards] td[data-label],
   .tabla[data-cards] td.derecha {
-    text-align: left !important;
+    text-align: right !important;
+  }
+
+  .tabla[data-cards] td.ahora {
+    white-space: normal;
   }
 
   /* El nombre de la columna, tomado del encabezado, antes del valor */
@@ -630,6 +691,8 @@ textarea.entrada {
   /* La celda principal (el nombre) ocupa su propia línea, sin etiqueta */
   .tabla[data-cards] td.celdaPrincipal {
     display: block;
+    order: -1;
+    text-align: left !important;
   }
 
   .tabla[data-cards] td.celdaPrincipal::before {
