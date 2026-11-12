@@ -6,14 +6,13 @@ import { COOKIE_ACCESS, MODULOS, type Modulo } from './config'
 import { leerToken } from './token'
 
 /**
- * Para las páginas de cada módulo: devuelve quién inició sesión o manda al formulario de
- * ingreso de ese módulo. El proxy ya hizo este filtro; esto es la segunda barrera, por si
+ * Para las páginas de cada módulo: devuelve quién inició sesión o manda al ingreso. El proxy ya hizo este filtro; esto es la segunda barrera, por si
  * alguna ruta queda fuera de su matcher.
  */
 export const requerirSesion = cache(async (modulo: Modulo) => {
   const identidad = leerToken((await cookies()).get(COOKIE_ACCESS)?.value)
   if (!identidad || identidad.rol !== MODULOS[modulo].rol) {
-    redirect(`/ingresar/${modulo}`)
+    redirect('/ingresar')
   }
   return identidad
 })
@@ -30,6 +29,6 @@ export async function apiConSesion<T>(
   await requerirSesion(modulo)
   const token = (await cookies()).get(COOKIE_ACCESS)?.value
   const r = await llamarApi<T>(ruta, { ...opciones, token })
-  if (!r.ok && r.status === 401) redirect(`/ingresar/${modulo}`)
+  if (!r.ok && r.status === 401) redirect('/ingresar')
   return r
 }
