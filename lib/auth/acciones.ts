@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { esSesion, guardarSesion, llamarApi, type Resultado } from './api'
-import { COOKIE_ACCESS, COOKIE_REFRESH, esModulo, type Modulo, MODULOS, moduloDeRol, RUTAS_API } from './config'
+import { COOKIE_ACCESS, COOKIE_REFRESH, moduloDeRol, RUTAS_API } from './config'
 
 export type EstadoIngreso = { error: string; correo: string } | undefined
 
@@ -20,10 +20,8 @@ function mensajeDeError(r: Extract<Resultado<unknown>, { ok: false }>) {
   return 'Algo falló en el servidor. Intenta de nuevo en un momento.'
 }
 
-/** El formulario de cada módulo la recibe con el módulo ya fijado (bind). */
-export async function iniciarSesion(modulo: Modulo, _previo: EstadoIngreso, datos: FormData): Promise<EstadoIngreso> {
-  if (!esModulo(modulo)) return { error: 'Módulo no válido.', correo: '' }
-
+/** Un solo ingreso: según el rol de la cuenta se abre su módulo. */
+export async function iniciarSesion(_previo: EstadoIngreso, datos: FormData): Promise<EstadoIngreso> {
   const correo = String(datos.get('correo') ?? '').trim()
   const contrasena = String(datos.get('contrasena') ?? '')
   if (!correo || !contrasena) return { error: 'Escribe tu correo y tu contraseña.', correo }
@@ -33,16 +31,11 @@ export async function iniciarSesion(modulo: Modulo, _previo: EstadoIngreso, dato
   if (!esSesion(r.datos)) return { error: 'El servidor respondió algo inesperado. Intenta de nuevo.', correo }
   const sesion = r.datos
 
-  const suModulo = moduloDeRol(sesion.usuario?.tipoUsuario)
-  if (suModulo !== modulo) {
-    // Las credenciales son buenas pero de otro módulo: se cierra la sesión que el backend abrió.
+  const modulo = moduloDeRol(sesion.usuario?.tipoUsuario)
+  if (!modulo) {
+    // Credenciales buenas pero sin módulo para ese rol: se cierra la sesión que abrió el backend.
     await llamarApi(RUTAS_API.logout, { token: sesion.access_token })
-    return {
-      error: suModulo
-        ? `Esta cuenta es de ${MODULOS[suModulo].nombre}. Ingresa por ese módulo.`
-        : 'Esta cuenta no tiene acceso a este módulo.',
-      correo,
-    }
+    return { error: 'Esta cuenta no tiene acceso a ningún módulo.', correo }
   }
 
   guardarSesion(await cookies(), sesion)

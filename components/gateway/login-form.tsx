@@ -1,37 +1,26 @@
 'use client'
 
-import { ArrowLeft, CircleAlert, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
-import Link from 'next/link'
+import { CircleAlert, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { useActionState, useState } from 'react'
 import type { EstadoIngreso } from '@/lib/auth/acciones'
-import type { Modulo } from '@/lib/auth/config'
 import styles from './login-form.module.css'
-import { MODULOS_UI } from './modulos'
 
-/** Correo y contraseña de un módulo. No hay registro: las cuentas las crea la administración. */
+/** Un solo ingreso para todos los roles: el backend dice quién es y se va a su módulo.
+ *  No hay registro: las cuentas las crea la administración. */
 export function LoginForm({
-  modulo,
   accion,
 }: {
-  modulo: Modulo
   accion: (previo: EstadoIngreso, datos: FormData) => Promise<EstadoIngreso>
 }) {
   const [estado, enviar, enviando] = useActionState(accion, undefined)
   const [verContrasena, setVerContrasena] = useState(false)
-  const { nombre, icono: Icono } = MODULOS_UI[modulo]
 
   return (
     <>
-      <Link href="/" prefetch={false} className={`btn ${styles.volver}`} data-variant="quiet" data-size="sm">
-        <ArrowLeft aria-hidden="true" />
-        Módulos
-      </Link>
-
       <div className={styles.encabezado}>
-        <Icono className={styles.icono} aria-hidden="true" strokeWidth={1.75} />
         <div>
-          <p className={styles.antetitulo}>Ingresar como</p>
-          <h1 className={`t-display ${styles.titulo}`}>{nombre}</h1>
+          <p className={styles.antetitulo}>Torres del Parque</p>
+          <h1 className={`t-display ${styles.titulo}`}>Ingresar</h1>
         </div>
       </div>
 
@@ -95,9 +84,7 @@ export function LoginForm({
         </button>
       </form>
 
-      {modulo !== 'admin' && (
-        <p className={styles.ayuda}>¿No tienes cuenta? La administración la crea por ti.</p>
-      )}
+      <p className={styles.ayuda}>¿No tienes cuenta? La administración la crea por ti.</p>
     </>
   )
 }
