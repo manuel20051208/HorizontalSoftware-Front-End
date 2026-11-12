@@ -77,11 +77,21 @@
   font-weight: 600;
 }
 
-/* Más angosto que la portada para caber en la columna del resumen */
+/* La cifra del recaudo se mide contra el ancho de su columna */
+.recaudo {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+/* Más angosta que la portada para caber en la columna del resumen, y siempre en una
+   línea: cada carácter ocupa ~0,56 em (ancho 112 %; 0,6 deja margen), así que con
+   --caracteres (lo pone el componente) se reduce lo justo para que la cifra quepa
+   entera, en vez de salirse de la tarjeta con recaudos de 8 dígitos o más. */
 .hero {
   margin-top: 0.5rem;
-  font-size: clamp(2.25rem, 3.6vw, 3.1rem);
+  font-size: min(clamp(2.25rem, 3.6vw, 3.1rem), calc(100cqi / (var(--caracteres, 12) * 0.6)));
   font-stretch: 112%;
+  white-space: nowrap;
 }
 
 .problema {

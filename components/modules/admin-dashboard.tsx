@@ -11,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { Chip } from '@/components/ui/chip'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
 import {
@@ -75,6 +76,7 @@ export function AdminDashboard({
   resumenError: boolean
 }) {
   const hoy = useHoy()
+  const recaudo = pesos(resumen.recaudoMes)
   const ultimosPagos = pagos.slice(0, 6)
   const ultimosAvisos = notificaciones.slice(0, 4)
 
@@ -102,9 +104,11 @@ export function AdminDashboard({
         <TowerPlan inmuebles={inmuebles} />
 
         <aside className={`hoja ${styles.resumen}`} aria-label="Resumen del mes">
-          <div>
+          <div className={styles.recaudo}>
             <p className={styles.rotulo}>Recaudo de {mesDelPeriodo(resumen.periodo)}</p>
-            <p className={`t-hero ${styles.hero}`}>{pesos(resumen.recaudoMes)}</p>
+            <p className={`t-hero ${styles.hero}`} style={{ '--caracteres': recaudo.length } as CSSProperties}>
+              {recaudo}
+            </p>
             <p className={styles.delta}>
               <Wallet aria-hidden="true" strokeWidth={2.4} />
               {resumen.alDia} de {resumen.totalInmuebles} inmuebles al día
