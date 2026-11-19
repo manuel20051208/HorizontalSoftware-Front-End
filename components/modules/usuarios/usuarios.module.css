@@ -525,28 +525,6 @@
   height: 1.125rem;
 }
 
-/* En la fila de la lista: se despliega al pulsar «Verificar correo» */
-.verificarDesplegable {
-  display: grid;
-  justify-items: end;
-  gap: 0.625rem;
-}
-
-.verificarDesplegable > summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.verificarDesplegable > summary::-webkit-details-marker {
-  display: none;
-}
-
-.verificarCompacto {
-  display: grid;
-  gap: 0.5rem;
-  white-space: normal;
-}
-
 .exitoAcciones {
   display: flex;
   flex-wrap: wrap;
@@ -584,56 +562,148 @@
   gap: 0.375rem;
 }
 
-/* Botón que despliega su formulario debajo; abierto ocupa toda la fila */
-.desplegable {
-  display: grid;
-  justify-items: start;
-  gap: 0.5rem;
+/* ---------- Popover: panel flotante anclado a su botón ----------
+   Ancho fijo, no estira la fila de la tabla. Es un <details>: el panel solo existe abierto. */
+
+.popover {
+  position: relative;
+  display: inline-block;
 }
 
-.desplegable[open] {
-  flex-basis: 100%;
-}
-
-.desplegable > summary {
+.popover > summary {
   list-style: none;
   cursor: pointer;
 }
 
-.desplegable > summary::-webkit-details-marker {
+.popover > summary::-webkit-details-marker {
   display: none;
 }
 
-.desplegableCuerpo {
-  display: grid;
-  justify-items: start;
-  gap: 0.625rem;
-  width: 100%;
-  max-width: 24rem;
-  padding: 0.875rem;
-  border: 1px solid var(--linea);
-  border-radius: var(--radio-control);
+.popover[open] > summary {
   background: var(--sello-tinte);
+  border-color: var(--sello);
+}
+
+.popoverPanel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  z-index: 40;
+  display: grid;
+  gap: 0.75rem;
+  width: min(300px, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--papel-solido);
+  box-shadow:
+    0 1px 2px rgb(27 21 72 / 0.08),
+    0 18px 36px -16px rgb(27 21 72 / 0.38);
+  color: var(--tinta);
+  text-align: left;
   white-space: normal;
 }
 
-.desplegableCuerpo .grupo {
-  width: 100%;
+.popover[data-alinear='inicio'] > .popoverPanel {
+  left: 0;
 }
 
-/* Quitar del apartamento: la confirmación se distingue por el tono de alerta */
-.desplegablePeligro {
-  border-color: var(--alerta);
-  background: var(--alerta-tinte);
+.popover[data-alinear='fin'] > .popoverPanel {
+  right: 0;
 }
 
-.entradaFila {
+/* El panel de la tabla queda encima de los paneles que vienen después en la página */
+:global(.hoja):has(.popover[open]) {
+  position: relative;
+  z-index: 30;
+}
+
+.popoverTitulo {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.popoverForm {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.popoverFila {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.popoverFila :global(.btn) {
+  flex: none;
   min-height: 40px;
 }
 
-.aviso {
+.popoverEntrada,
+.popoverCodigo {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 0.75rem;
+}
+
+.popoverCodigo {
+  text-align: center;
+}
+
+.popoverAyuda {
+  color: var(--tinta-2);
   font-size: 0.8125rem;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.popoverAyuda strong {
+  color: var(--tinta);
+  font-weight: 650;
+}
+
+/* Acción secundaria discreta debajo, separada por una línea */
+.popoverPie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.125rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--linea);
+}
+
+.popoverPie :global(.btn) {
+  margin-right: -0.625rem;
+}
+
+.popoverNota {
+  color: var(--tinta-2);
+  font-size: 0.75rem;
+}
+
+.popoverAcciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btnPeligro:global(.btn)[data-variant='primary'] {
+  background: var(--alerta);
+}
+
+.btnPeligro:global(.btn)[data-variant='primary']:hover {
+  background: var(--alerta-celda);
+}
+
+@media (pointer: coarse) {
+  .popoverFila :global(.btn),
+  .popoverEntrada,
+  .popoverCodigo {
+    min-height: 44px;
+  }
 }
 
 .okRelacion {
@@ -751,6 +821,24 @@
   }
   .relacion {
     min-width: 0;
+  }
+
+  /* En móvil el panel ocupa el ancho de la tarjeta-fila, justo debajo de su botón */
+  .tabla tr {
+    position: relative;
+  }
+
+  .tabla .popover {
+    position: static;
+  }
+
+  .tabla .popoverPanel,
+  .tabla .popover[data-alinear] > .popoverPanel {
+    top: auto;
+    right: 0;
+    left: 0;
+    width: auto;
+    margin-top: 0.5rem;
   }
   .cCreada,
   .tabla td.sinDato {

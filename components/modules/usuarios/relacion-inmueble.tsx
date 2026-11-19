@@ -10,6 +10,7 @@ import {
   vincularInmueble,
 } from '@/lib/usuarios/acciones'
 import type { Inmueble } from '@/lib/usuarios/tipos'
+import { Popover, useCerrarAlTerminar, useCerrarPopover } from './popover'
 import styles from './usuarios.module.css'
 
 /** Lo que pasa al mudar o quitar a un residente (lo hace el back en la misma operación). */
@@ -37,7 +38,10 @@ function Resultado({ estado, id }: { estado: EstadoRelacion; id?: string }) {
   )
 }
 
-/** Select + botón que envía un apartamento (asignar o cambiar). Funciona sin JavaScript: es un form. */
+/**
+ * Contenido del popover para asignar o cambiar: select y botón en una fila, aviso debajo. Funciona sin
+ * JavaScript (es un form). Al guardar con éxito el popover se cierra y la celda muestra el apartamento nuevo.
+ */
 function FormularioApartamento({
   accion,
   inmuebles,
@@ -53,24 +57,25 @@ function FormularioApartamento({
 }) {
   const [estado, enviar, enviando] = useActionState(accion, undefined)
   const id = useId()
+  useCerrarAlTerminar(estado)
 
   return (
-    <form action={enviar} className={styles.desplegableCuerpo}>
-      <div className={styles.grupo}>
-        <label htmlFor={`${id}-inmueble`} className={styles.etiqueta}>
-          {etiqueta}
-        </label>
+    <form action={enviar} className={styles.popoverForm}>
+      <label htmlFor={`${id}-inmueble`} className="sr-only">
+        {etiqueta}
+      </label>
+      <div className={styles.popoverFila}>
         <select
           id={`${id}-inmueble`}
           name="inmuebleId"
           required
           defaultValue=""
-          className={`${styles.entrada} ${styles.entradaFila}`}
+          className={`${styles.entrada} ${styles.popoverEntrada}`}
           aria-invalid={estado?.estado === 'error' ? true : undefined}
-          aria-describedby={estado?.estado === 'error' ? `${id}-error` : undefined}
+          aria-describedby={estado?.estado === 'error' ? `${id}-error` : `${id}-aviso`}
         >
           <option value="" disabled>
-            Elige…
+            {etiqueta}…
           </option>
           {inmuebles.map((i) => (
             <option key={i.id} value={i.id}>
@@ -78,50 +83,72 @@ function FormularioApartamento({
             </option>
           ))}
         </select>
+        <button type="submit" className="btn" data-variant="primary" data-size="sm" disabled={enviando}>
+          {enviando ? 'Guardando…' : boton}
+        </button>
       </div>
-      <p className={styles.aviso}>{aviso}</p>
-      <button type="submit" className="btn" data-variant="primary" data-size="sm" disabled={enviando}>
-        {enviando ? 'Guardando…' : boton}
-      </button>
+      <p id={`${id}-aviso`} className={styles.popoverAyuda}>
+        {aviso}
+      </p>
       <Resultado estado={estado} id={`${id}-error`} />
     </form>
   )
 }
 
-/**
- * «Quitar del apartamento» con la confirmación dentro de la misma UI (nada de window.confirm): el botón
- * despliega el aviso de lo que pasa y el botón que de verdad envía el DELETE.
- */
+/** Confirmación de «Quitar del apartamento» dentro del popover (nada de window.confirm). */
+function ConfirmarQuitar({ identificacion }: { identificacion: number }) {
+  const [estado, enviar, enviando] = useActionState(desvincularInmueble.bind(null, identificacion), undefined)
+  const cerrar = useCerrarPopover()
+
+  return (
+    <form action={enviar} className={styles.popoverForm}>
+      <p className={styles.popoverAyuda}>{EFECTOS_QUITAR}</p>
+      <Resultado estado={estado} />
+      <div className={styles.popoverAcciones}>
+        <button type="button" className="btn" data-variant="quiet" data-size="sm" onClick={cerrar}>
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className={`btn ${styles.btnPeligro}`}
+          data-variant="primary"
+          data-size="sm"
+          disabled={enviando}
+        >
+          {enviando ? 'Quitando…' : 'Sí, quitar'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/** «Quitar del apartamento»: abre la confirmación con lo que pasa y el botón que envía el DELETE. */
 export function QuitarDelApartamento({
   identificacion,
   nombre,
   direccion,
+  alinear = 'inicio',
 }: {
   identificacion: number
   nombre: string
   direccion: string
+  alinear?: 'inicio' | 'fin'
 }) {
-  const [estado, enviar, enviando] = useActionState(desvincularInmueble.bind(null, identificacion), undefined)
-
   return (
-    <details className={styles.desplegable}>
-      <summary className="btn" data-variant="quiet" data-size="sm" aria-label={`Quitar a ${nombre} de ${direccion}`}>
-        <UserMinus aria-hidden="true" />
-        Quitar del apartamento
-      </summary>
-      <form action={enviar} className={`${styles.desplegableCuerpo} ${styles.desplegablePeligro}`}>
-        <p className={styles.aviso}>
-          <strong>
-            ¿Quitar a {nombre} de {direccion}?
-          </strong>{' '}
-          {EFECTOS_QUITAR}
-        </p>
-        <button type="submit" className="btn" data-variant="primary" data-size="sm" disabled={enviando}>
-          {enviando ? 'Quitando…' : 'Sí, quitar del apartamento'}
-        </button>
-        <Resultado estado={estado} />
-      </form>
-    </details>
+    <Popover
+      boton={
+        <>
+          <UserMinus aria-hidden="true" />
+          Quitar
+        </>
+      }
+      ariaLabel={`Quitar a ${nombre} de ${direccion}`}
+      titulo={`¿Quitar a ${nombre} de ${direccion}?`}
+      variante="quiet"
+      alinear={alinear}
+    >
+      <ConfirmarQuitar identificacion={identificacion} />
+    </Popover>
   )
 }
 
@@ -159,34 +186,44 @@ export function ApartamentoResidente({
           <span className={`t-nota ${styles.sinDato}`}>No se cargaron los apartamentos.</span>
         ) : tiene ? (
           otros.length > 0 && (
-            <details className={styles.desplegable}>
-              <summary className="btn" data-variant="secondary" data-size="sm" aria-label={`Cambiar el apartamento de ${nombre}`}>
-                <ArrowRightLeft aria-hidden="true" />
-                Cambiar apartamento
-              </summary>
+            <Popover
+              boton={
+                <>
+                  <ArrowRightLeft aria-hidden="true" />
+                  Cambiar
+                </>
+              }
+              ariaLabel={`Cambiar el apartamento de ${nombre}`}
+              titulo={`Cambiar el apartamento de ${nombre}`}
+            >
               <FormularioApartamento
                 accion={cambiarInmueble.bind(null, identificacion)}
                 inmuebles={otros}
                 etiqueta="Apartamento nuevo"
-                boton="Cambiar apartamento"
+                boton="Cambiar"
                 aviso={EFECTOS_CAMBIAR}
               />
-            </details>
+            </Popover>
           )
         ) : otros.length > 0 ? (
-          <details className={styles.desplegable}>
-            <summary className="btn" data-variant="secondary" data-size="sm" aria-label={`Asignar un apartamento a ${nombre}`}>
-              <HousePlus aria-hidden="true" />
-              Asignar apartamento
-            </summary>
+          <Popover
+            boton={
+              <>
+                <HousePlus aria-hidden="true" />
+                Asignar apartamento
+              </>
+            }
+            ariaLabel={`Asignar un apartamento a ${nombre}`}
+            titulo={`Asignar un apartamento a ${nombre}`}
+          >
             <FormularioApartamento
               accion={vincularInmueble.bind(null, identificacion)}
               inmuebles={otros}
               etiqueta="Apartamento"
-              boton="Asignar apartamento"
+              boton="Asignar"
               aviso={NO_ACTIVA}
             />
-          </details>
+          </Popover>
         ) : (
           <span className={`t-nota ${styles.sinDato}`}>No hay apartamentos activos.</span>
         )}

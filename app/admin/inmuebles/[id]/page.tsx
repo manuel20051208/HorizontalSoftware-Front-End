@@ -149,43 +149,42 @@ export default async function InmueblePage({ params }: Props) {
         ) : residentes.length === 0 ? (
           <Vacio>Este apartamento no tiene residentes.</Vacio>
         ) : (
-          <div className={styles.tablaMarco}>
-            <table className={styles.tabla} data-cards>
-              <thead>
-                <tr>
-                  <th scope="col">Nombre</th>
-                  <th scope="col">Documento</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">
-                    <span className="sr-only">Acción</span>
-                  </th>
+          <table className={styles.tabla} data-cards>
+            <thead>
+              <tr>
+                <th scope="col">Nombre</th>
+                <th scope="col">Documento</th>
+                <th scope="col">Estado</th>
+                <th scope="col">
+                  <span className="sr-only">Acción</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {residentes.map((r) => (
+                <tr key={r.id}>
+                  <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
+                    {r.nombreCompleto}
+                  </td>
+                  <td className="t-columna" data-label="Documento">{r.identificacion}</td>
+                  <td data-label="Estado">
+                    <span className="chip" data-tone={r.active ? 'ok' : 'wait'}>
+                      {r.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
+                      {r.active ? 'Activa' : 'Inactiva'}
+                    </span>
+                  </td>
+                  <td className={styles.derecha}>
+                    <QuitarDelApartamento
+                      identificacion={r.identificacion}
+                      nombre={r.nombreCompleto}
+                      direccion={inmueble.direccionInmueble}
+                      alinear="fin"
+                    />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {residentes.map((r) => (
-                  <tr key={r.id}>
-                    <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
-                      {r.nombreCompleto}
-                    </td>
-                    <td className="t-columna" data-label="Documento">{r.identificacion}</td>
-                    <td data-label="Estado">
-                      <span className="chip" data-tone={r.active ? 'ok' : 'wait'}>
-                        {r.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
-                        {r.active ? 'Activa' : 'Inactiva'}
-                      </span>
-                    </td>
-                    <td className={styles.derecha}>
-                      <QuitarDelApartamento
-                        identificacion={r.identificacion}
-                        nombre={r.nombreCompleto}
-                        direccion={inmueble.direccionInmueble}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
 
         {inmueble.isActive === false ? (
