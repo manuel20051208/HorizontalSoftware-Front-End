@@ -1,4 +1,5 @@
 import { Logo } from '@/components/brand/logo'
+import { EnlacesLegales } from '@/components/legal/documento-legal'
 import styles from './gateway.module.css'
 
 /**
@@ -14,6 +15,7 @@ export function PantallaAcceso({ children }: { children: React.ReactNode }) {
 
       <div className={styles.lado}>
         <div className={styles.copia}>{children}</div>
+        <EnlacesLegales />
       </div>
 
       {/* Decorativa: es un fondo de CSS, así que en el teléfono ni siquiera se descarga */}

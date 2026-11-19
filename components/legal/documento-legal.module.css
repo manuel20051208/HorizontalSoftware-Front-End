@@ -1,0 +1,120 @@
+/* Páginas legales: una hoja de papel legible sobre el concreto */
+
+.pagina {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1.25rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+  background: var(--concreto);
+}
+
+.cabecera {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.cabecera a {
+  text-decoration: none;
+}
+
+.hoja {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.125rem;
+  border: 1px solid var(--linea);
+  border-radius: 18px;
+  background: var(--papel-solido);
+  box-shadow: 0 24px 48px -32px rgb(27 21 72 / 0.35);
+}
+
+.titulo {
+  font-family: var(--font-voz);
+  font-size: clamp(1.625rem, 6vw, 2.125rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--tinta);
+}
+
+.fecha {
+  margin-top: 0.375rem;
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+}
+
+.cuerpo {
+  margin-top: 1.25rem;
+  color: var(--tinta);
+  font-size: 0.9875rem;
+  line-height: 1.6;
+}
+
+.cuerpo h2 {
+  margin-top: 1.75rem;
+  font-size: 1.125rem;
+  font-weight: 720;
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.cuerpo p,
+.cuerpo ul {
+  margin-top: 0.625rem;
+}
+
+.cuerpo ul {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.cuerpo li + li {
+  margin-top: 0.25rem;
+}
+
+.cuerpo a {
+  color: var(--sello);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cuerpo a:hover {
+  color: var(--sello-hondo);
+}
+
+.cuerpo code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: var(--sello-tinte);
+  font-size: 0.875em;
+}
+
+.enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem 0.625rem;
+  margin-top: 1.25rem;
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+}
+
+.enlaces a {
+  color: var(--tinta-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.enlaces a:hover,
+.enlaces a:focus-visible {
+  color: var(--sello);
+}
+
+@media (min-width: 881px) {
+  .pagina {
+    padding-top: 1.75rem;
+  }
+
+  .hoja {
+    padding: 2.25rem 2.5rem;
+  }
+}

@@ -26,6 +26,8 @@
   z-index: 1;
   display: grid;
   place-items: center;
+  /* La tarjeta y, debajo, los enlaces legales quedan juntos en el centro */
+  align-content: center;
   padding: 1rem;
 }
 
