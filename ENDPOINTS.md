@@ -144,6 +144,7 @@ Todos: **ADMIN**.
 | PUT | `/api/admin/inmuebles/{id}/zonas-comunes` | `{zonaComunIds: [..]}` (no vacío) | 200 `Zona[]` |
 | POST | `/api/admin/inmuebles/{id}/recordatorio-pago` | - | 201 `Notificacion` |
 | POST | `/api/admin/inmuebles/{id}/conciliar-pago` | `{monto, metodoPago, referencia?}` | 201 `Pago` |
+| GET | `/api/admin/inmuebles/{id}/residentes` | - | 200 `RelacionInmueble[]` (por nombre; 404 si el inmueble no existe). Ver *Relación con inmueble* en 4.3 |
 
 - `Resumen`: `{id, direccionInmueble, isActive, estadoPago, saldoPendiente, fechaLimitePendiente, valorParqueadero, totalLiquidaciones}`.
 - `Detalle`: lo anterior más `nombresUsuarios`, `usuarios` (`Usuario[]`), `zonasComunes` (`Zona[]`) y `liquidacionVigente`.
@@ -157,13 +158,18 @@ Todos: **ADMIN**.
 | GET | `/api/admin/usuarios?tipo=&active=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Usuario>` (por nombre) |
 | POST | `/api/admin/usuarios/{identificacion}/verificar-correo` | `{codigo}` (4 cifras) | 200 `Usuario` (correo verificado y cuenta activa) |
 | POST | `/api/admin/usuarios/{identificacion}/reenviar-codigo` | - | 202 `{mensaje}` |
-| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo; 409 si intenta activar una cuenta con el correo sin verificar) |
+| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo; 409 si intenta activar una cuenta con el correo sin verificar o un `RESIDENTE` sin inmueble) |
+| GET | `/api/admin/usuarios/{identificacion}/inmueble` | - | 200 `RelacionInmueble` |
+| POST | `/api/admin/usuarios/{identificacion}/inmueble` | `{inmuebleId}` | 201 `RelacionInmueble` (vincular) |
+| PUT | `/api/admin/usuarios/{identificacion}/inmueble` | `{inmuebleId}` | 200 `RelacionInmueble` (cambiar) |
+| DELETE | `/api/admin/usuarios/{identificacion}/inmueble` | - | 204 (desvincular: la cuenta queda inactiva y sin sesión) |
+| GET | `/api/admin/inmuebles/{id}/residentes` | - | 200 `RelacionInmueble[]` (por nombre) |
 
 **Verificación del correo (la única forma de activar una cuenta nueva).**
 1. `POST /api/admin/usuarios` crea la cuenta **inactiva** (`active: false`, `correoVerificado: false`) y envía un código de **4 cifras** al correo que escribió la administración.
 2. El usuario se lo dicta a la administración, que lo confirma con `verificar-correo`. Con el código correcto el correo queda verificado y la cuenta **activa**: ya puede iniciar sesión.
 3. El código se guarda cifrado, **vence a los 15 minutos** y admite **máximo 5 intentos fallidos**. `reenviar-codigo` envía uno nuevo, que **reemplaza** al anterior y **reinicia** los intentos.
-4. El `PATCH .../activo` no salta este paso: con el correo sin verificar responde 409. Desactivar y volver a activar una cuenta ya verificada funciona igual que antes. Los invitados (`USUARIO_AUTORIZADO`) no pasan por aquí: los autoriza su residente.
+4. El `PATCH .../activo` no salta este paso: con el correo sin verificar responde 409 (y también si es un `RESIDENTE` sin inmueble: «Primero relacione la cuenta con un inmueble»; `verificar-correo` responde ese mismo 409). Desactivar y volver a activar una cuenta ya verificada funciona igual que antes. Los invitados (`USUARIO_AUTORIZADO`) no pasan por aquí: los autoriza su residente.
 5. Las cuentas que ya estaban activas antes de este cambio quedaron verificadas. Las inactivas quedaron **por verificar**: la administración les reenvía el código desde la lista.
 
 | Código | Cuándo (el front muestra el `mensaje` del back tal cual) |
@@ -171,7 +177,29 @@ Todos: **ADMIN**.
 | 400 | Código incorrecto (`"Codigo incorrecto. Quedan N intentos"`) o que no son 4 cifras (`errores.codigo`) |
 | 403 | La cuenta es de un invitado |
 | 404 | No existe un usuario con esa identificación |
-| 409 | El correo ya está verificado; no hay código vigente; el código venció; se agotaron los intentos |
+| 409 | El correo ya está verificado; no hay código vigente; el código venció; se agotaron los intentos; es un `RESIDENTE` sin inmueble («Primero relacione la cuenta con un inmueble») |
+
+**Relación con inmueble (residente ◇— inmueble).** Solo las cuentas `RESIDENTE` se relacionan con un inmueble;
+los invitados siguen a su residente. El inmueble de un residente ya no es fijo: la administración lo vincula,
+lo cambia o lo quita con `/api/admin/usuarios/{identificacion}/inmueble`.
+
+- `RelacionInmueble`: `{id, identificacion, nombreCompleto, tipoUsuario, active, inmuebleId, direccionInmueble}`. `inmuebleId` y `direccionInmueble` vienen `null` si el residente no tiene inmueble.
+- **Vincular** (`POST`): solo si no tiene inmueble (si tiene → 409, usar cambiar). **No** activa la cuenta: después se activa con `PATCH .../activo` o `verificar-correo`.
+- **Cambiar** (`PUT`): solo si ya tiene inmueble (si no → 409, usar vincular) y el nuevo es distinto. En la misma operación:
+  1. Sus invitados **exclusivos** (él es su único anfitrión) se mudan con él al inmueble nuevo.
+  2. Los invitados **compartidos** (tienen otro anfitrión) pierden solo el vínculo con él y se quedan en el inmueble viejo.
+  3. Si su auto tenía parqueadero asignado (era del inmueble viejo) queda libre (`parqueaderoId = null`); el auto sigue siendo suyo.
+  4. Se cancelan sus reservas futuras `PROGRAMADA` de zonas que el inmueble nuevo no tiene asignadas. Las `EN_CURSO` no se tocan.
+- **Desvincular** (`DELETE`): la cuenta queda **sin inmueble, inactiva y sin sesión**. Sus invitados exclusivos se **desactivan** (conservan el inmueble viejo), los compartidos pierden solo el vínculo con él, el parqueadero del auto queda libre y se cancelan **todas** sus reservas futuras `PROGRAMADA`.
+- Un residente sin inmueble no se puede activar ni verificar su correo (409) hasta que se le vincule uno.
+- `GET /api/admin/inmuebles/{id}/residentes`: los residentes (`RESIDENTE`) del inmueble, por nombre. Los residentes sin inmueble salen de `GET /api/admin/usuarios?tipo=RESIDENTE&active=false` con `inmuebleId` null.
+
+| Código | Cuándo (el front muestra el `mensaje` del back tal cual) |
+|---|---|
+| 400 | Falta `inmuebleId` o no es positivo (`errores.inmuebleId`) |
+| 403 | La cuenta es de un invitado (`"Los invitados siguen a su residente: no se relacionan con un inmueble"`) |
+| 404 | `"No existe un usuario con esa identificacion"` / `"El inmueble <id> no existe"` |
+| 409 | `"Solo los residentes se relacionan con un inmueble"`; `"La cuenta ya tiene un inmueble; use cambiar"` (POST); `"La cuenta no tiene un inmueble; use vincular"` (PUT); `"La cuenta no tiene un inmueble relacionado"` (DELETE); `"La cuenta ya esta relacionada con ese inmueble"` (PUT al mismo); `"El inmueble <direccion> esta inactivo"`; el administrador no está vigente |
 
 `CrearUsuario`: `{tipoUsuario, identificacion, nombreCompleto, fechaNacimiento?, correoElectronico, contrasena, inmuebleId?, inicioContrato?, venceContrato?}`.
 `tipoUsuario`: `ADMINISTRADOR`, `RESIDENTE` o `VIGILANTE`. `inmuebleId` es obligatorio para `RESIDENTE`; `inicioContrato` y `venceContrato` para `ADMINISTRADOR` y `VIGILANTE`.
@@ -388,6 +416,19 @@ La protección está en anotaciones sobre cada método, no en reglas por URL. Un
 
 Lo que el front debe tener en cuenta desde la última versión de este documento (11-nov-2026). El resto del contrato no cambió.
 
+### 19-nov-2026 - relación con inmueble
+| Rol | Endpoint | Para qué | Sección |
+|---|---|---|---|
+| ADMIN | `GET /api/admin/usuarios/{identificacion}/inmueble` | Consulta el inmueble de un residente (`RelacionInmueble`). | 4.3 |
+| ADMIN | `POST /api/admin/usuarios/{identificacion}/inmueble` | Vincula un residente sin inmueble (`{inmuebleId}`); 201. | 4.3 |
+| ADMIN | `PUT /api/admin/usuarios/{identificacion}/inmueble` | Lo muda a otro inmueble: muda a sus invitados exclusivos, libera el parqueadero y cancela reservas futuras de zonas que el nuevo no tiene. | 4.3 |
+| ADMIN | `DELETE /api/admin/usuarios/{identificacion}/inmueble` | Lo quita del inmueble: la cuenta queda inactiva y sin sesión, sus invitados exclusivos se desactivan; 204. | 4.3 |
+| ADMIN | `GET /api/admin/inmuebles/{id}/residentes` | Residentes de un inmueble (`RelacionInmueble[]`, por nombre). | 4.2 / 4.3 |
+
+`PATCH .../activo` y `POST .../verificar-correo` responden 409 «Primero relacione la cuenta con un inmueble» si la
+cuenta es un `RESIDENTE` sin inmueble. Un residente puede venir ahora con `inmuebleId` y `direccionInmueble` en `null`
+en `Usuario` (antes nunca).
+
 ### 19-nov-2026 - verificación del correo con código
 | Rol | Endpoint | Para qué | Sección |
 |---|---|---|---|
@@ -417,5 +458,5 @@ Lo que el front debe tener en cuenta desde la última versión de este documento
 
 ### Sin cambios para el front
 - **Zonas comunes del residente** (`GET /api/residente/zonas-comunes`): misma ruta y misma respuesta; solo cambió cómo se resuelve el inmueble por dentro.
-- **Base de datos (V4):** el borrado en cascada sigue el diagrama de clases (composición = cascada, agregación = borrado normal). No hay endpoints que borren inmuebles, residentes, pagos ni zonas, así que no cambia ninguna respuesta. El único `DELETE` es `/api/residente/reservas/{id}`.
+- **Base de datos (V4):** el borrado en cascada sigue el diagrama de clases (composición = cascada, agregación = borrado normal). No hay endpoints que borren inmuebles, residentes, pagos ni zonas, así que no cambia ninguna respuesta. Los únicos `DELETE` son `/api/residente/reservas/{id}` y `/api/admin/usuarios/{identificacion}/inmueble` (quita la relación, no borra la cuenta).
 - **Tipos del modelo** (`contrasena` como `String`, `Lombok`): son cambios internos; los cuerpos de `/api/auth/**` son los mismos.

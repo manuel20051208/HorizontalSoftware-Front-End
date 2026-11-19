@@ -3,7 +3,7 @@ import { UsuariosVista } from '@/components/modules/usuarios/usuarios-vista'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
-import { tipoDeFiltro, type Usuario } from '@/lib/usuarios/tipos'
+import { type Inmueble, tipoDeFiltro, type Usuario } from '@/lib/usuarios/tipos'
 
 export const metadata: Metadata = { title: 'Usuarios' }
 
@@ -18,11 +18,21 @@ export default async function UsuariosPage({ searchParams }: Props) {
   const consulta = new URLSearchParams()
   if (tipo) consulta.set('tipo', tipo)
   if (estado) consulta.set('active', String(estado === 'activas'))
-  const resultado = await apiConSesion<Listado<Usuario>>(
-    'admin',
-    listado(consulta.size ? `${RUTAS_API.usuarios}?${consulta}` : RUTAS_API.usuarios),
-    { metodo: 'GET' },
-  )
+  // Los apartamentos activos, para asignar o cambiar el de un residente (igual que en «Nueva cuenta»)
+  const verResidentes = !tipo || tipo === 'RESIDENTE'
+  const [resultado, inmueblesR] = await Promise.all([
+    apiConSesion<Listado<Usuario>>(
+      'admin',
+      listado(consulta.size ? `${RUTAS_API.usuarios}?${consulta}` : RUTAS_API.usuarios),
+      { metodo: 'GET' },
+    ),
+    verResidentes ? apiConSesion<Listado<Inmueble>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }) : null,
+  ])
+  const inmuebles = inmueblesR?.ok
+    ? listaDe(inmueblesR)
+        .filter((i) => i.isActive !== false)
+        .sort((a, b) => a.direccionInmueble.localeCompare(b.direccionInmueble, 'es', { numeric: true }))
+    : null
 
-  return <UsuariosVista resultado={resultado} tipo={tipo} estado={estado} />
+  return <UsuariosVista resultado={resultado} tipo={tipo} estado={estado} inmuebles={inmuebles} />
 }

@@ -13,9 +13,11 @@ import {
   type InmuebleDetalle,
   type Zona,
 } from '@/lib/api/tipos'
-import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
+import { consultaPagina, listaDe, listado, type Listado, TAMANO_MAXIMO } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
+import { AgregarResidente, QuitarDelApartamento } from '@/components/modules/usuarios/relacion-inmueble'
+import type { RelacionInmueble, Usuario } from '@/lib/usuarios/tipos'
 import {
   asignarZonas,
   conciliarPago,
@@ -28,15 +30,38 @@ export const metadata: Metadata = { title: 'Detalle del inmueble' }
 
 type Props = { params: Promise<{ id: string }> }
 
+/**
+ * Residentes sin apartamento, para «Agregar residente». Al quitar a alguien de su apartamento la cuenta queda
+ * inactiva y no se puede activar sin uno, así que basta con pedir los inactivos. Se recorren todas las páginas.
+ */
+async function residentesSinApartamento() {
+  const ruta = (pagina: number) =>
+    `${RUTAS_API.usuarios}?tipo=RESIDENTE&active=false&${consultaPagina(pagina, TAMANO_MAXIMO)}`
+  const primera = await apiConSesion<Listado<Usuario>>('admin', ruta(1), { metodo: 'GET' })
+  if (!primera.ok) return null
+  const total = Array.isArray(primera.datos) ? 1 : primera.datos.totalPaginas
+  const resto = await Promise.all(
+    Array.from({ length: Math.max(0, total - 1) }, (_, i) =>
+      apiConSesion<Listado<Usuario>>('admin', ruta(i + 2), { metodo: 'GET' }),
+    ),
+  )
+  return [primera, ...resto]
+    .flatMap((r) => listaDe(r))
+    .filter((u) => u.tipoUsuario === 'RESIDENTE' && u.inmuebleId === null && u.direccionInmueble === null)
+    .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto, 'es'))
+}
+
 export default async function InmueblePage({ params }: Props) {
   await requerirSesion('admin')
   const { id } = await params
   const inmuebleId = Number(id)
   if (!Number.isSafeInteger(inmuebleId) || inmuebleId <= 0) notFound()
 
-  const [detalleR, zonasR] = await Promise.all([
+  const [detalleR, zonasR, residentesR, sinApartamento] = await Promise.all([
     apiConSesion<InmuebleDetalle>('admin', RUTAS_API.inmueble(inmuebleId), { metodo: 'GET' }),
     apiConSesion<Listado<Zona>>('admin', listado(RUTAS_API.zonasComunes), { metodo: 'GET' }),
+    apiConSesion<RelacionInmueble[]>('admin', RUTAS_API.residentesDeInmueble(inmuebleId), { metodo: 'GET' }),
+    residentesSinApartamento(),
   ])
 
   if (!detalleR.ok && detalleR.status === 404) notFound()
@@ -54,6 +79,7 @@ export default async function InmueblePage({ params }: Props) {
   const zonas = listaDe(zonasR)
   const asignadas = new Set(inmueble.zonasComunes.map((z) => z.id))
   const liquidacion = inmueble.liquidacionVigente
+  const residentes = residentesR.ok ? listaDe(residentesR) : []
 
   return (
     <div className={styles.pagina}>
@@ -112,6 +138,75 @@ export default async function InmueblePage({ params }: Props) {
           <dd className={styles.detalle}>{liquidacion ? `Vigente: ${liquidacion.periodo.slice(0, 7)}` : 'Sin liquidación vigente'}</dd>
         </div>
       </dl>
+
+      <Panel
+        titulo="Residentes"
+        id="residentes-titulo"
+        nota="Las cuentas de residente relacionadas con este apartamento. Sus invitados siguen al residente."
+      >
+        {!residentesR.ok ? (
+          <EstadoResultado resultado={residentesR} porDefecto="No se pudieron cargar los residentes." />
+        ) : residentes.length === 0 ? (
+          <Vacio>Este apartamento no tiene residentes.</Vacio>
+        ) : (
+          <div className={styles.tablaMarco}>
+            <table className={styles.tabla} data-cards>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Documento</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">
+                    <span className="sr-only">Acción</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {residentes.map((r) => (
+                  <tr key={r.id}>
+                    <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
+                      {r.nombreCompleto}
+                    </td>
+                    <td className="t-columna" data-label="Documento">{r.identificacion}</td>
+                    <td data-label="Estado">
+                      <span className="chip" data-tone={r.active ? 'ok' : 'wait'}>
+                        {r.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
+                        {r.active ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td className={styles.derecha}>
+                      <QuitarDelApartamento
+                        identificacion={r.identificacion}
+                        nombre={r.nombreCompleto}
+                        direccion={inmueble.direccionInmueble}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {inmueble.isActive === false ? (
+          <p className={`t-nota ${styles.notaSuelta}`}>El inmueble está inactivo: no se le pueden agregar residentes.</p>
+        ) : sinApartamento === null ? (
+          <p className={`t-nota ${styles.notaSuelta}`}>No se pudo cargar la lista de residentes sin apartamento.</p>
+        ) : sinApartamento.length === 0 ? (
+          <p className={`t-nota ${styles.notaSuelta}`}>
+            No hay residentes sin apartamento para agregar. Para traer a uno que ya vive en otro, cámbialo desde{' '}
+            <Link href="/admin/usuarios?tipo=residentes" prefetch={false}>
+              Usuarios
+            </Link>
+            .
+          </p>
+        ) : (
+          <AgregarResidente
+            inmuebleId={inmuebleId}
+            candidatos={sinApartamento.map((u) => ({ identificacion: u.identificacion, nombreCompleto: u.nombreCompleto }))}
+          />
+        )}
+      </Panel>
 
       <div className={styles.rejilla}>
         <Panel titulo="Personas del inmueble" nota={inmueble.nombresUsuarios.length ? inmueble.nombresUsuarios.join(', ') : 'Sin residentes asignados'}>

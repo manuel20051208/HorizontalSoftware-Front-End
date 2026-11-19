@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
-import { esTipoCuenta, hoyBogota, type TipoCuenta, type Usuario } from './tipos'
+import { esTipoCuenta, hoyBogota, type RelacionInmueble, type TipoCuenta, type Usuario } from './tipos'
 
 export type CampoCuenta =
   | 'tipoUsuario'
@@ -150,7 +150,8 @@ export async function alternarActivo(identificacion: number, _previo: EstadoActi
   if (!r.ok) {
     if (r.status === 0) return { error: 'Sin conexión con el servidor.' }
     if (r.status === 403) return { error: 'Esta cuenta no se puede cambiar desde aquí.' }
-    if (r.status === 409) return { error: 'Primero verifica el correo con el código que le llegó.' }
+    // 409: correo sin verificar o residente sin apartamento («Primero relacione la cuenta con un inmueble»)
+    if (r.status === 409) return { error: r.mensaje || 'Primero verifica el correo con el código que le llegó.' }
     return { error: 'No se pudo cambiar. Intenta de nuevo.' }
   }
   revalidatePath('/admin/usuarios')
@@ -197,4 +198,90 @@ export async function reenviarCodigo(identificacion: number, _previo: EstadoVeri
     return { estado: 'error', mensaje: r.mensaje || 'No se pudo reenviar el código.' }
   }
   return { estado: 'reenviado', mensaje: 'Se envió un código nuevo. El anterior ya no sirve.' }
+}
+
+// ---------- Relación de un residente con su inmueble ----------
+
+export type EstadoRelacion = { estado: 'ok'; mensaje: string } | { estado: 'error'; mensaje: string } | undefined
+
+/** La lista de usuarios y el detalle de cada inmueble muestran la relación: se refrescan los dos. */
+function refrescarRelacion() {
+  revalidatePath('/admin/usuarios')
+  revalidatePath('/admin/inmuebles')
+  revalidatePath('/admin/inmuebles/[id]', 'page')
+}
+
+/** 404, 403 y 409 traen el motivo exacto del back (ya tiene inmueble, inmueble inactivo, mismo inmueble...). */
+function errorRelacion(r: Extract<Resultado<unknown>, { ok: false }>, porDefecto: string): EstadoRelacion {
+  if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
+  if (r.status === 400) return { estado: 'error', mensaje: r.errores?.inmuebleId ?? (r.mensaje || 'Elige un apartamento.') }
+  return { estado: 'error', mensaje: r.mensaje || porDefecto }
+}
+
+function idDe(datos: FormData, campo: string) {
+  const n = Number(String(datos.get(campo) ?? '').trim())
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined
+}
+
+async function relacionar(
+  identificacion: number,
+  inmuebleId: number,
+  metodo: 'POST' | 'PUT',
+): Promise<EstadoRelacion> {
+  const r = await apiConSesion<RelacionInmueble>('admin', RUTAS_API.relacionInmueble(identificacion), {
+    metodo,
+    body: { inmuebleId },
+  })
+  if (!r.ok) return errorRelacion(r, 'No se pudo guardar el apartamento. Intenta de nuevo.')
+  refrescarRelacion()
+  const nombre = r.datos?.nombreCompleto ?? 'La cuenta'
+  const apto = r.datos?.direccionInmueble ?? 'el apartamento elegido'
+  return { estado: 'ok', mensaje: `${nombre} quedó en ${apto}.` }
+}
+
+/** POST: asigna un apartamento a un residente que no tiene. No activa la cuenta. */
+export async function vincularInmueble(
+  identificacion: number,
+  _previo: EstadoRelacion,
+  datos: FormData,
+): Promise<EstadoRelacion> {
+  const inmuebleId = idDe(datos, 'inmuebleId')
+  if (!inmuebleId) return { estado: 'error', mensaje: 'Elige el apartamento.' }
+  return relacionar(identificacion, inmuebleId, 'POST')
+}
+
+/** POST desde el detalle del inmueble: el apartamento ya está fijo y se elige al residente. */
+export async function agregarResidente(
+  inmuebleId: number,
+  _previo: EstadoRelacion,
+  datos: FormData,
+): Promise<EstadoRelacion> {
+  const identificacion = idDe(datos, 'identificacion')
+  if (!identificacion) return { estado: 'error', mensaje: 'Elige al residente.' }
+  return relacionar(identificacion, inmuebleId, 'POST')
+}
+
+/**
+ * PUT: muda al residente a otro apartamento. El back muda con él a sus invitados exclusivos, libera el
+ * parqueadero de su auto y cancela sus reservas futuras de zonas que el apartamento nuevo no tiene.
+ */
+export async function cambiarInmueble(
+  identificacion: number,
+  _previo: EstadoRelacion,
+  datos: FormData,
+): Promise<EstadoRelacion> {
+  const inmuebleId = idDe(datos, 'inmuebleId')
+  if (!inmuebleId) return { estado: 'error', mensaje: 'Elige el apartamento nuevo.' }
+  return relacionar(identificacion, inmuebleId, 'PUT')
+}
+
+/**
+ * DELETE: quita al residente de su apartamento. La cuenta queda inactiva y sin sesión, sus invitados
+ * exclusivos se desactivan, se libera el parqueadero y se cancelan sus reservas futuras.
+ */
+export async function desvincularInmueble(identificacion: number, _previo: EstadoRelacion): Promise<EstadoRelacion> {
+  const r = await apiConSesion('admin', RUTAS_API.relacionInmueble(identificacion), { metodo: 'DELETE' })
+  if (!r.ok) return errorRelacion(r, 'No se pudo quitar del apartamento. Intenta de nuevo.')
+  refrescarRelacion()
+  return { estado: 'ok', mensaje: 'Quedó sin apartamento y su cuenta inactiva.' }
 }

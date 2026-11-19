@@ -4,8 +4,9 @@ import { Chip } from '@/components/ui/chip'
 import { listaDe, type Listado } from '@/lib/api/paginacion'
 import type { Resultado } from '@/lib/auth/api'
 import { alternarActivo } from '@/lib/usuarios/acciones'
-import { esTipoCuenta, TIPOS_CUENTA, type TipoCuenta, type Usuario } from '@/lib/usuarios/tipos'
+import { esTipoCuenta, type Inmueble, TIPOS_CUENTA, type TipoCuenta, type Usuario } from '@/lib/usuarios/tipos'
 import { BotonActivo } from './boton-activo'
+import { ApartamentoResidente } from './relacion-inmueble'
 import styles from './usuarios.module.css'
 import { VerificarCorreo } from './verificar-correo'
 
@@ -31,10 +32,13 @@ export function UsuariosVista({
   resultado,
   tipo,
   estado,
+  inmuebles,
 }: {
   resultado: Resultado<Listado<Usuario>>
   tipo?: TipoCuenta
   estado?: Estado
+  /** Apartamentos activos, para asignar o cambiar el de un residente (null = no se pudieron cargar). */
+  inmuebles: Inmueble[] | null
 }) {
   // Los invitados (USUARIO_AUTORIZADO) los maneja cada residente; aquí solo van las cuentas que crea la administración
   const usuarios = listaDe(resultado).filter((u) => esTipoCuenta(u.tipoUsuario))
@@ -130,9 +134,21 @@ export function UsuariosVista({
                       <span className={`t-nota ${styles.correo}`}>{u.correoElectronico}</span>
                     </td>
                     <td className={styles.cTipo}>{TIPOS_CUENTA[tipoU].nombre}</td>
-                    <td className={`${styles.cApto} ${u.direccionInmueble ? '' : styles.sinDato}`}>
-                      {u.direccionInmueble ?? <span aria-label="Sin apartamento">—</span>}
-                    </td>
+                    {tipoU === 'RESIDENTE' ? (
+                      <td className={styles.cApto}>
+                        <ApartamentoResidente
+                          identificacion={u.identificacion}
+                          nombre={u.nombreCompleto}
+                          inmuebleId={u.inmuebleId}
+                          direccion={u.direccionInmueble}
+                          inmuebles={inmuebles}
+                        />
+                      </td>
+                    ) : (
+                      <td className={`${styles.cApto} ${u.direccionInmueble ? '' : styles.sinDato}`}>
+                        {u.direccionInmueble ?? <span aria-label="Sin apartamento">—</span>}
+                      </td>
+                    )}
                     <td className={styles.cEstado}>
                       {activa ? (
                         <Chip tono="ok" icono={Check}>

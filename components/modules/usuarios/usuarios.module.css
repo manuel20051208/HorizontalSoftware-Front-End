@@ -554,6 +554,118 @@
   margin-top: 0.25rem;
 }
 
+/* ---------- Relación del residente con su apartamento ---------- */
+
+.relacion {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  min-width: 12rem;
+}
+
+.relacionApto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 600;
+}
+
+.relacionApto svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--tinta-2);
+}
+
+.relacionAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+/* Botón que despliega su formulario debajo; abierto ocupa toda la fila */
+.desplegable {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+.desplegable[open] {
+  flex-basis: 100%;
+}
+
+.desplegable > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.desplegable > summary::-webkit-details-marker {
+  display: none;
+}
+
+.desplegableCuerpo {
+  display: grid;
+  justify-items: start;
+  gap: 0.625rem;
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.875rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-control);
+  background: var(--sello-tinte);
+  white-space: normal;
+}
+
+.desplegableCuerpo .grupo {
+  width: 100%;
+}
+
+/* Quitar del apartamento: la confirmación se distingue por el tono de alerta */
+.desplegablePeligro {
+  border-color: var(--alerta);
+  background: var(--alerta-tinte);
+}
+
+.entradaFila {
+  min-height: 40px;
+}
+
+.aviso {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.okRelacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  color: var(--ok);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.okRelacion svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+}
+
+/* Detalle del inmueble: agregar a un residente sin apartamento */
+.agregarResidente {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linea);
+}
+
+.activarFila .grupoAncho {
+  flex: 1 1 14rem;
+}
+
 /* ---------- Pantallas angostas ---------- */
 
 @media (max-width: 720px) {
@@ -636,6 +748,9 @@
   .cAccion {
     grid-area: accion;
     justify-self: end;
+  }
+  .relacion {
+    min-width: 0;
   }
   .cCreada,
   .tabla td.sinDato {

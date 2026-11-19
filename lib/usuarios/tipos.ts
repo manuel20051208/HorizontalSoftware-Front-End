@@ -36,6 +36,17 @@ export type Usuario = {
   correoVerificado?: boolean | null
 }
 
+/** UsuarioResponses.RelacionInmueble: la cuenta de un residente y su apartamento (null si no tiene). */
+export type RelacionInmueble = {
+  id: number
+  identificacion: number
+  nombreCompleto: string
+  tipoUsuario: string
+  active: boolean | null
+  inmuebleId: number | null
+  direccionInmueble: string | null
+}
+
 /** InmuebleResponses.Resumen (solo lo que usa el formulario) */
 export type Inmueble = {
   id: number

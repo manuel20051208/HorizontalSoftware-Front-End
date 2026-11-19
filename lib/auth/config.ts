@@ -55,12 +55,14 @@ export const RUTAS_API = {
   zonasDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/zonas-comunes`, // PUT
   recordatorio: (id: number) => `/api/admin/inmuebles/${id}/recordatorio-pago`, // POST
   conciliar: (id: number) => `/api/admin/inmuebles/${id}/conciliar-pago`, // POST
+  residentesDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/residentes`, // GET -> RelacionInmueble[] (por nombre)
 
   // Administrador · usuarios
   usuarios: '/api/admin/usuarios', // GET ?tipo=&active= -> Usuario[] · POST CrearUsuario -> 201 Usuario
-  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna (409 si el correo no está verificado)
+  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna (409 si el correo no está verificado o el residente no tiene inmueble)
   verificarCorreo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/verificar-correo`, // POST { codigo } -> Usuario (activa)
   reenviarCodigo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/reenviar-codigo`, // POST -> 202 { mensaje }
+  relacionInmueble: (identificacion: number) => `/api/admin/usuarios/${identificacion}/inmueble`, // GET · POST/PUT { inmuebleId } -> RelacionInmueble · DELETE -> 204
 
   // Administrador · zonas comunes y reglas
   zonasComunes: '/api/admin/zonas-comunes', // GET -> Zona[] · POST CrearZona
