@@ -124,6 +124,61 @@
   margin-top: 0.25rem;
 }
 
+/* Etiqueta de la contraseña con «¿Olvidaste tu contraseña?» al otro lado */
+.filaEtiqueta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--sello);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.enlace:hover {
+  color: var(--sello-hondo);
+}
+
+.enlace svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.lead {
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.exito {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--radio-control);
+  background: var(--ok-tinte);
+  color: var(--ok);
+  font-size: 0.9375rem;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.exito svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+}
+
 .ayuda {
   margin-top: 1rem;
   color: var(--tinta-2);

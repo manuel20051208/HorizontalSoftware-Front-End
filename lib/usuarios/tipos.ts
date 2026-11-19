@@ -27,6 +27,8 @@ export type Usuario = {
   correoElectronico: string
   tipoUsuario: string
   active: boolean | null
+  /** false = tiene notificaciones sin leer (lo usa la campana del shell). */
+  notificacionLeida?: boolean | null
   fechaCreacionCuenta: string | null
   inmuebleId: number | null
   direccionInmueble: string | null

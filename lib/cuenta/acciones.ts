@@ -26,6 +26,12 @@ export async function cambiarContrasena(
   if (!contrasenaActual || !contrasenaNueva) {
     return { estado: 'error', mensaje: 'Escribe tu contraseña actual y la nueva.' }
   }
+  if (datos.has('confirmacion') && texto(datos, 'confirmacion') !== contrasenaNueva) {
+    return { estado: 'error', mensaje: 'La confirmación no coincide con la nueva contraseña.' }
+  }
+  if (contrasenaNueva === contrasenaActual) {
+    return { estado: 'error', mensaje: 'La nueva contraseña debe ser distinta de la actual.' }
+  }
   if (contrasenaNueva.length < 8 || !/\p{L}/u.test(contrasenaNueva) || !/\d/.test(contrasenaNueva)) {
     return { estado: 'error', mensaje: 'La nueva contraseña debe tener mínimo 8 caracteres, con letras y números.' }
   }
@@ -82,7 +88,7 @@ export async function cambiarPreferencia(
 export async function marcarNotificacionesLeidas(modulo: Modulo): Promise<EstadoAccion> {
   const r = await apiConSesion(modulo, RUTAS_API.notificacionesLeidas, { metodo: 'PUT' })
   if (!r.ok) return errorDeApi(r, 'No se pudieron marcar las notificaciones.')
-  revalidatePath(`/${modulo}/notificaciones`)
-  revalidatePath(`/${modulo}`)
+  // 'layout': también se refresca el shell, donde la campana muestra el punto de no leídas
+  revalidatePath(`/${modulo}`, 'layout')
   return exito('Notificaciones marcadas como leídas.')
 }

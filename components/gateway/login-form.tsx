@@ -1,6 +1,7 @@
 'use client'
 
 import { CircleAlert, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
+import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import type { EstadoIngreso } from '@/lib/auth/acciones'
 import styles from './login-form.module.css'
@@ -46,9 +47,14 @@ export function LoginForm({
         </div>
 
         <div className={styles.grupo}>
-          <label htmlFor="contrasena" className={styles.etiqueta}>
-            Contraseña
-          </label>
+          <div className={styles.filaEtiqueta}>
+            <label htmlFor="contrasena" className={styles.etiqueta}>
+              Contraseña
+            </label>
+            <Link href="/recuperar" className={styles.enlace}>
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
           <div className={`campo ${styles.campo}`}>
             <LockKeyhole aria-hidden="true" />
             <input
