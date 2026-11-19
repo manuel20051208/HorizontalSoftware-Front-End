@@ -477,53 +477,6 @@
   line-height: 1.45;
 }
 
-/* Activación con el código que llegó al correo del usuario */
-.activarCodigo {
-  display: grid;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 1rem;
-  border: 1px solid var(--linea);
-  border-radius: var(--radio-control);
-  background: var(--sello-tinte);
-}
-
-.activarFila {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.625rem;
-}
-
-.activarFila .grupo {
-  flex: 0 1 11rem;
-}
-
-/* El código se lee como cifras separadas */
-.codigo {
-  font-size: 1.125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.4em;
-}
-
-.activada {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radio-control);
-  background: var(--ok-tinte);
-  color: var(--ok);
-  font-weight: 650;
-}
-
-.activada svg {
-  flex: none;
-  width: 1.125rem;
-  height: 1.125rem;
-}
-
 .exitoAcciones {
   display: flex;
   flex-wrap: wrap;

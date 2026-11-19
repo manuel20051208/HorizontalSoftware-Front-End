@@ -88,8 +88,7 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 | POST | `/api/auth/login` | Público | `{correo, contrasena}` | 200 `Sesion` |
 | POST | `/api/auth/refresh` | Público | `{refreshToken}` | 200 `Sesion` |
 | POST | `/api/auth/logout` | Autenticado | - | 204 (revoca el refresh) |
-| POST | `/api/auth/activar` | Público | `{correo, contrasena, codigo}` (`codigo`: 4 cifras, `[0-9]{4}`, ej. `"0427"`) | 200 `{active, mensaje}` |
-| POST | `/api/auth/reenviar-codigo` | Público | `{correo}` | 202 `{mensaje}` (igual exista o no la cuenta) |
+| POST | `/api/auth/activar` | Público | `{correo, contrasena}` | 200 `{active, mensaje}` |
 | POST | `/api/auth/recuperar-contrasena` | Público | `{correo}` | 202 `{mensaje}` (igual exista o no el correo) |
 | PUT | `/api/auth/contrasena` | Autenticado | `{contrasenaActual, contrasenaNueva}` | 204 |
 | GET | `/api/auth/me` | Autenticado | - | 200 `Usuario` |
@@ -107,21 +106,6 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 > Nota: `refreshToken` va en camelCase en el cuerpo de `/refresh`, pero llega como `refresh_token` en la respuesta.
 
 **Contraseña nueva:** mínimo 8 caracteres, con al menos una letra y un número.
-
-**Activación con código de verificación.** Al crear una cuenta (`POST /api/admin/usuarios`, salvo un `USUARIO_AUTORIZADO`) el back envía al correo del usuario un código de **4 cifras**. La cuenta se activa con `POST /api/auth/activar` enviando el correo, la contraseña inicial y ese código. **En el front lo hace solo el panel del administrador**: después de crear la cuenta, la tarjeta de éxito pide el código (el usuario se lo dicta al admin) y la activa con el correo y la contraseña que el admin acaba de escribir. No hay ninguna pantalla pública de activación; los endpoints siguen siendo públicos en el back.
-- El código se guarda cifrado, **vence a los 7 días** (igual que la ventana de activación) y admite **máximo 5 intentos fallidos**; después hay que pedir otro.
-- `POST /api/auth/reenviar-codigo` responde siempre 202 `{"mensaje": "Si la cuenta existe y esta pendiente de activar, recibira un codigo nuevo"}`. El código nuevo **reemplaza** al anterior y **reinicia** los intentos.
-- Errores de `/activar` (el panel muestra el `mensaje` del back tal cual):
-
-| Código | Cuándo |
-|---|---|
-| 400 | `codigo` vacío o que no tiene 4 cifras (validación) |
-| 401 | Correo o contraseña incorrectos (se revisa antes del código y **no gasta intentos**) |
-| 401 | `Codigo incorrecto. Le quedan N intentos`; al llegar a 0: `Se agotaron los intentos: pida uno nuevo` |
-| 403 | `No hay un codigo de activacion vigente: pida uno nuevo` |
-| 403 | `El codigo de activacion vencio: pida uno nuevo` |
-| 403 | `Se agotaron los intentos del codigo: pida uno nuevo` |
-| 403 | Venció el plazo de 7 días para activar, o la cuenta es de un invitado |
 
 ## 4. Administrador
 
@@ -167,7 +151,7 @@ Todos: **ADMIN**.
 ### 4.3 Usuarios - `/api/admin/usuarios` (todos **ADMIN**)
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
-| POST | `/api/admin/usuarios` | `CrearUsuario` | 201 `Usuario` (la cuenta queda inactiva y el back envía el código de activación a su correo, salvo `USUARIO_AUTORIZADO`) |
+| POST | `/api/admin/usuarios` | `CrearUsuario` | 201 `Usuario` |
 | GET | `/api/admin/usuarios?tipo=&active=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Usuario>` (por nombre) |
 | PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo) |
 
@@ -371,7 +355,7 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 
 | Rol | Rutas |
 |---|---|
-| Público | `/api/auth/login`, `/refresh`, `/activar`, `/reenviar-codigo`, `/recuperar-contrasena`, `/api/pasarela/webhook` (firma de Wompi) |
+| Público | `/api/auth/login`, `/refresh`, `/activar`, `/recuperar-contrasena`, `/api/pasarela/webhook` (firma de Wompi) |
 | Autenticado | `/api/auth/logout`, `/contrasena`, `/me`, `/api/notificaciones/**` |
 | ADMINISTRADOR | `/api/admin/**` |
 | RESIDENTE | `/api/residente/**` |

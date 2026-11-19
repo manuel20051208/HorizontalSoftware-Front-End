@@ -35,8 +35,7 @@ export const RUTAS_API = {
   login: '/api/auth/login', // Público · { correo, contrasena } -> Sesion
   refresh: '/api/auth/refresh', // Público · { refreshToken } -> Sesion
   logout: '/api/auth/logout', // Autenticado -> 204
-  activar: '/api/auth/activar', // Público · { correo, contrasena, codigo (4 cifras) } -> { active, mensaje } · lo usa el panel de admin
-  reenviarCodigo: '/api/auth/reenviar-codigo', // Público · { correo } -> 202 { mensaje } (igual exista o no) · lo usa el panel de admin
+  activar: '/api/auth/activar', // Público · { correo, contrasena } -> { active, mensaje }
   recuperar: '/api/auth/recuperar-contrasena', // Público · { correo } -> 202 { mensaje }
   cambiarContrasena: '/api/auth/contrasena', // Autenticado · PUT { contrasenaActual, contrasenaNueva } -> 204
   me: '/api/auth/me', // Autenticado -> Usuario
