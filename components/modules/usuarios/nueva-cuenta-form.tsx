@@ -335,7 +335,9 @@ function CuentaCreada({
   useEffect(() => ref.current?.focus(), [])
 
   function copiar() {
-    const texto = `Torres del Parque · módulo ${modulo}\nCorreo: ${cuenta.correo}\nContraseña: ${cuenta.contrasena}`
+    const texto =
+      `Torres del Parque · módulo ${modulo}\nCorreo: ${cuenta.correo}\nContraseña: ${cuenta.contrasena}` +
+      (cuenta.activa ? '' : `\nActiva tu cuenta en ${window.location.origin}/activar con el código que te llegó al correo.`)
     navigator.clipboard
       ?.writeText(texto)
       .then(() => setCopiado(true))
@@ -364,11 +366,14 @@ function CuentaCreada({
       </dl>
 
       <p className={styles.activacion}>
-        {cuenta.activa
-          ? 'La cuenta ya está activa: puede ingresar ahora.'
-          : cuenta.tipo === 'ADMINISTRADOR'
-            ? 'La cuenta se creó, pero no se pudo activar. Intenta activarla más tarde.'
-            : 'La cuenta se creó, pero no se pudo activar. Actívala desde la lista de usuarios.'}
+        {cuenta.activa ? (
+          'La cuenta ya está activa: puede ingresar ahora.'
+        ) : (
+          <>
+            Se envió un código de activación a <strong>{cuenta.correo}</strong>. Con ese código, el correo y la
+            contraseña inicial, la persona activa su cuenta en <strong>/activar</strong> (el código vence en 7 días).
+          </>
+        )}
       </p>
 
       <div className={styles.exitoAcciones}>

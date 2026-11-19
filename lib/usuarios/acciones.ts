@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { llamarApi, type Resultado } from '@/lib/auth/api'
+import type { Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
 import { esTipoCuenta, hoyBogota, type TipoCuenta, type Usuario } from './tipos'
@@ -125,16 +125,9 @@ export async function crearCuenta(_previo: EstadoCrear, datos: FormData): Promis
   })
   if (!r.ok) return { estado: 'error', ...errorDelBackend(r), valores }
 
-  // El backend crea la cuenta inactiva. Como la administración acaba de ponerle la contraseña,
-  // la activa de una vez con /api/auth/activar (no alterna como el PATCH: si ya estaba activa, la deja así).
-  // Sirve para todos los tipos, también para administradores.
-  let activa = r.datos?.active === true
-  if (!activa) {
-    const a = await llamarApi<{ active: boolean }>(RUTAS_API.activar, {
-      body: { correo: valores.correoElectronico, contrasena: valores.contrasena },
-    })
-    activa = a.ok && a.datos?.active === true
-  }
+  // El backend crea la cuenta inactiva y envía un código de 4 cifras a su correo. La persona la
+  // activa en /activar con su correo, la contraseña inicial y ese código (vence en 7 días).
+  const activa = r.datos?.active === true
 
   revalidatePath('/admin/usuarios')
   return {

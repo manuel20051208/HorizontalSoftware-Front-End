@@ -90,7 +90,13 @@ export function LoginForm({
         </button>
       </form>
 
-      <p className={styles.ayuda}>¿No tienes cuenta? La administración la crea por ti.</p>
+      <p className={styles.ayuda}>
+        ¿Cuenta nueva?{' '}
+        <Link href="/activar" className={styles.enlace}>
+          Actívala con tu código
+        </Link>
+        . Si no tienes cuenta, la administración la crea por ti.
+      </p>
     </>
   )
 }

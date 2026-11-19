@@ -153,6 +153,47 @@
   height: 0.9375rem;
 }
 
+/* «Reenviar código»: un botón con aspecto de enlace */
+.enlaceBoton {
+  min-height: 32px;
+  padding: 0 0.25rem;
+  margin-inline-end: -0.25rem;
+  border-radius: 6px;
+  color: var(--sello);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.enlaceBoton:hover {
+  color: var(--sello-hondo);
+}
+
+.enlaceBoton:disabled {
+  color: var(--tinta-2);
+  cursor: progress;
+}
+
+.enlaceBoton:focus-visible {
+  outline: 2px solid var(--sello);
+  outline-offset: 2px;
+}
+
+/* El código se lee como cifras separadas */
+.codigo {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4em;
+}
+
+.ayudaCampo {
+  color: var(--tinta-2);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
 .lead {
   color: var(--tinta-2);
   font-size: 0.9375rem;

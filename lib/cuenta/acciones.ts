@@ -16,6 +16,49 @@ export async function recuperarContrasena(_previo: EstadoAccion, datos: FormData
   return exito('Si el correo está registrado, recibirás una contraseña temporal.')
 }
 
+/**
+ * Público: activa una cuenta nueva con el correo, la contraseña inicial y el código de 4 cifras
+ * que el back envió al correo. Los errores del back se muestran tal cual (intentos restantes,
+ * código vencido...), así que aquí no se usa errorDeApi: su 401 diría «tu sesión venció».
+ */
+export async function activarCuenta(_previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
+  const correo = texto(datos, 'correo')
+  const contrasena = texto(datos, 'contrasena')
+  const codigo = texto(datos, 'codigo')
+  const errores: Record<string, string> = {}
+  if (!correo) errores.correo = 'Escribe tu correo.'
+  if (!contrasena) errores.contrasena = 'Escribe la contraseña que te dio la administración.'
+  if (!/^[0-9]{4}$/.test(codigo)) errores.codigo = 'El código tiene 4 cifras.'
+  if (Object.keys(errores).length) {
+    return { estado: 'error', mensaje: Object.values(errores)[0], errores }
+  }
+
+  const r = await llamarApi<{ active: boolean; mensaje?: string }>(RUTAS_API.activar, {
+    body: { correo, contrasena, codigo },
+  })
+  if (!r.ok) {
+    if (r.status === 0) {
+      return { estado: 'error', mensaje: 'No pudimos conectar con el servidor. Intenta de nuevo en un momento.' }
+    }
+    return { estado: 'error', mensaje: r.mensaje || 'No se pudo activar la cuenta. Revisa los datos.' }
+  }
+  return exito(r.datos?.mensaje || 'Tu cuenta quedó activa. Ya puedes ingresar.')
+}
+
+/** Público: pide un código nuevo. El back responde igual exista o no la cuenta. */
+export async function reenviarCodigo(_previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
+  const correo = texto(datos, 'correo')
+  if (!correo) return { estado: 'error', mensaje: 'Escribe tu correo para enviarte un código nuevo.' }
+  const r = await llamarApi<{ mensaje: string }>(RUTAS_API.reenviarCodigo, { body: { correo } })
+  if (!r.ok) {
+    if (r.status === 0) {
+      return { estado: 'error', mensaje: 'No pudimos conectar con el servidor. Intenta de nuevo en un momento.' }
+    }
+    return { estado: 'error', mensaje: r.mensaje || 'No se pudo enviar el código.' }
+  }
+  return exito('Si la cuenta existe y está pendiente de activar, recibirás un código nuevo. El anterior deja de servir.')
+}
+
 export async function cambiarContrasena(
   modulo: Modulo,
   _previo: EstadoAccion,
