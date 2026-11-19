@@ -250,7 +250,18 @@ export async function enviarNotificacion(_previo: EstadoAccion, datos: FormData)
       inmuebleId: inmuebleId ?? null,
     },
   })
-  if (!r.ok) return errorDeApi(r, 'No se pudo enviar el comunicado.')
+  if (!r.ok) {
+    // 409: ningún destinatario acepta ese tipo en sus preferencias (o la cuenta está inactiva).
+    if (r.status === 409) {
+      return {
+        estado: 'error',
+        mensaje:
+          r.mensaje ||
+          'Ningún destinatario acepta este tipo de notificación en sus preferencias. Prueba con otro tipo o con otros destinatarios.',
+      }
+    }
+    return errorDeApi(r, 'No se pudo enviar el comunicado.')
+  }
   revalidatePath('/admin/notificaciones')
   revalidatePath('/admin')
   return exito('Comunicado enviado.')
@@ -272,19 +283,14 @@ export async function reembolsarPago(id: number): Promise<EstadoAccion> {
   return exito('Pago reembolsado y liquidación reabierta.')
 }
 
+/** Por API solo se activa o desactiva: nombre, URLs y llaves viven en el .env del back. */
 export async function guardarPasarela(_previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
-  const nombrePasarela = texto(datos, 'nombrePasarela')
-  const urlApi = texto(datos, 'urlApi')
-  const apiKey = texto(datos, 'apiKey')
-  const estado = texto(datos, 'estado') || 'ACTIVA'
-  if (!nombrePasarela || !urlApi || !apiKey) {
-    return { estado: 'error', mensaje: 'Completa el nombre, la URL y la llave de la pasarela.' }
+  const estado = texto(datos, 'estado')
+  if (estado !== 'ACTIVA' && estado !== 'INACTIVA') {
+    return { estado: 'error', mensaje: 'Elige si la pasarela queda activa o inactiva.' }
   }
-  const r = await apiConSesion('admin', RUTAS_API.pasarela, {
-    metodo: 'PUT',
-    body: { nombrePasarela, urlApi, apiKey, estado },
-  })
-  if (!r.ok) return errorDeApi(r, 'No se pudo guardar la pasarela.')
+  const r = await apiConSesion('admin', RUTAS_API.pasarela, { metodo: 'PUT', body: { estado } })
+  if (!r.ok) return errorDeApi(r, 'No se pudo cambiar el estado de la pasarela.')
   revalidatePath('/admin/pagos')
-  return exito('Configuración de la pasarela guardada.')
+  return exito(estado === 'ACTIVA' ? 'Pasarela activada.' : 'Pasarela desactivada.')
 }

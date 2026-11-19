@@ -42,6 +42,7 @@ export const RUTAS_API = {
 
   // Administrador · liquidaciones y panel
   resumen: '/api/admin/resumen', // GET ?periodo=yyyy-MM-dd -> ResumenAdmin
+  reportes: '/api/admin/reportes', // GET -> ReporteConsolidado
   liquidaciones: '/api/admin/liquidaciones', // GET ?inmuebleId=&estado=&periodo= -> Liquidacion[]
   liquidacionesMasiva: '/api/admin/liquidaciones/masiva', // POST { periodo, fechaLimite? }
   liquidacionMora: (id: number) => `/api/admin/liquidaciones/${id}/mora`, // PATCH
@@ -71,6 +72,7 @@ export const RUTAS_API = {
   // Administrador · notificaciones, pagos y pasarela
   notificacionesAdmin: '/api/admin/notificaciones', // POST Enviar -> Notificacion
   notificacionLectura: (id: number) => `/api/admin/notificaciones/${id}/lectura`, // GET
+  incidencias: '/api/admin/notificaciones/incidencias', // GET ?pagina=&tamano= -> Pagina<Notificacion>
   pagosAdmin: '/api/admin/pagos', // GET ?inmuebleId=&estado= -> Pago[]
   pagoAnular: (id: number) => `/api/admin/pagos/${id}/anular`, // POST
   pagoReembolso: (id: number) => `/api/admin/pagos/${id}/reembolso`, // POST
@@ -94,20 +96,23 @@ export const RUTAS_API = {
   // Notificaciones del usuario
   notificaciones: '/api/notificaciones', // GET -> Notificacion[]
   notificacionesLeidas: '/api/notificaciones/leida', // PUT -> 204
+  preferencias: '/api/notificaciones/preferencias', // GET -> Preferencias · PUT { tipoNotificacion } (alterna) -> Preferencias
 
   // Consultas compartidas
   comprobante: (id: number) => `/api/pagos/${id}/comprobante`, // GET -> { referencia, comprobante }
   estadoPago: (referencia: string) => `/api/pagos/estado/${encodeURIComponent(referencia)}`, // GET
   invitadoAnfitriones: (id: number) => `/api/invitados/${id}/residentes`, // GET -> Anfitrion[]
-  autoDuenos: (id: number, inmuebleId?: number) =>
-    `/api/autos/${id}/duenos${inmuebleId ? `?${new URLSearchParams({ inmuebleId: String(inmuebleId) })}` : ''}`,
+  autoDuenos: (id: number, inmuebleId: number) =>
+    `/api/autos/${id}/duenos?${new URLSearchParams({ inmuebleId: String(inmuebleId) })}`, // inmuebleId obligatorio
 
   // Vigilante
   vigilanteReservas: '/api/vigilante/reservas', // GET ?estado=&pagina=&tamano= -> Pagina<Reserva>
   vigilanteAcceso: (identificacion: number | string) =>
     `/api/vigilante/zonas-comunes/acceso?${new URLSearchParams({ identificacion: String(identificacion) })}`,
+  vigilanteInvitados: '/api/vigilante/invitados', // GET ?pagina=&tamano= -> Pagina<Invitado> (por nombre)
   vigilanteInvitado: (identificacion: number | string) => `/api/vigilante/invitados/${identificacion}`,
   vigilanteIngreso: (identificacion: number | string) => `/api/vigilante/invitados/${identificacion}/ingreso`,
+  vigilanteIncidencias: '/api/vigilante/incidencias', // POST { descripcion } (máx. 300) -> 201 Notificacion
 } as const
 
 export const COOKIE_ACCESS = 'tp_access'

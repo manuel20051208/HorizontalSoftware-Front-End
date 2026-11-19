@@ -1,22 +1,36 @@
-import { Bell, Send } from 'lucide-react'
+import { Bell, Send, TriangleAlert } from 'lucide-react'
 import type { Metadata } from 'next'
 import { FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo, CampoArea, CampoSelect } from '@/components/gestion/campos'
-import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
+import { Encabezado, EstadoResultado, Paginacion, Panel, Vacio } from '@/components/gestion/piezas'
+import { PanelPreferencias } from '@/components/gestion/preferencias'
 import styles from '@/components/gestion/gestion.module.css'
-import type {
-  InmuebleResumen,
-  LecturaNotificacion,
-  Notificacion,
+import {
+  TIPO_NOTIFICACION_TEXTO,
+  TIPOS_COMUNICADO,
+  textoTipoNotificacion,
+  type InmuebleResumen,
+  type LecturaNotificacion,
+  type Notificacion,
+  type Preferencias,
 } from '@/lib/api/tipos'
 import { enviarNotificacion } from '@/lib/admin/acciones'
-import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
+import { consultaPagina, leerPagina, listaDe, listado, paginaDeUrl, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
 export const metadata: Metadata = { title: 'Comunicados' }
 
-type Props = { searchParams: Promise<{ notificacion?: string }> }
+type Props = { searchParams: Promise<{ notificacion?: string; pagina?: string }> }
+
+const INCIDENCIAS_POR_PAGINA = 10
+
+function enlaceIncidencias(notificacionId: number, pagina: number) {
+  const q = new URLSearchParams()
+  if (notificacionId > 0) q.set('notificacion', String(notificacionId))
+  if (pagina > 1) q.set('pagina', String(pagina))
+  return `${q.size ? `/admin/notificaciones?${q}` : '/admin/notificaciones'}#incidencias`
+}
 
 function fechaHora(valor: string) {
   if (!valor) return '—'
@@ -33,8 +47,9 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
   await requerirSesion('admin')
   const params = await searchParams
   const notificacionId = Number(params.notificacion)
+  const paginaIncidencias = paginaDeUrl(params.pagina)
 
-  const [inmueblesR, propiasR, lecturaR] = await Promise.all([
+  const [inmueblesR, propiasR, lecturaR, incidenciasR, preferenciasR] = await Promise.all([
     apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
     apiConSesion<Listado<Notificacion>>('admin', listado(RUTAS_API.notificaciones), { metodo: 'GET' }),
     notificacionId > 0
@@ -42,10 +57,17 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
           metodo: 'GET',
         })
       : Promise.resolve({ ok: true as const, datos: null }),
+    apiConSesion<Listado<Notificacion>>(
+      'admin',
+      `${RUTAS_API.incidencias}?${consultaPagina(paginaIncidencias, INCIDENCIAS_POR_PAGINA)}`,
+      { metodo: 'GET' },
+    ),
+    apiConSesion<Preferencias>('admin', RUTAS_API.preferencias, { metodo: 'GET' }),
   ])
 
   const inmuebles = listaDe(inmueblesR)
   const propias = listaDe(propiasR)
+  const incidencias = leerPagina(incidenciasR, paginaIncidencias, INCIDENCIAS_POR_PAGINA, (a, b) => b.id - a.id)
 
   return (
     <div className={styles.pagina}>
@@ -70,12 +92,8 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
                 nombre="tipoNotificacion"
                 etiqueta="Tipo"
                 valor="GENERAL"
-                opciones={[
-                  { valor: 'GENERAL', texto: 'General' },
-                  { valor: 'PAGO', texto: 'Pago' },
-                  { valor: 'RESERVA', texto: 'Reserva' },
-                  { valor: 'SEGURIDAD', texto: 'Seguridad' },
-                ]}
+                opciones={TIPOS_COMUNICADO.map((t) => ({ valor: t, texto: TIPO_NOTIFICACION_TEXTO[t] }))}
+                ayuda="Solo lo reciben quienes aceptan este tipo en sus preferencias."
               />
               <CampoSelect
                 nombre="inmuebleId"
@@ -154,6 +172,47 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
         </Panel>
       </div>
 
+      <Panel
+        titulo="Incidencias de portería"
+        id="incidencias"
+        nota={
+          incidenciasR.ok
+            ? `${incidencias.total} ${incidencias.total === 1 ? 'incidencia reportada' : 'incidencias reportadas'} por los vigilantes, las más recientes primero.`
+            : 'Lo que reportan los vigilantes desde portería.'
+        }
+      >
+        {!incidenciasR.ok ? (
+          <EstadoResultado resultado={incidenciasR} porDefecto="No se pudieron cargar las incidencias." />
+        ) : incidencias.items.length === 0 ? (
+          <Vacio>Portería no ha reportado incidencias.</Vacio>
+        ) : (
+          <>
+            <ul className={styles.fichas}>
+              {incidencias.items.map((n) => (
+                <li key={n.id} className={`hoja ${styles.ficha}`}>
+                  <TriangleAlert aria-hidden="true" />
+                  <div className={styles.fichaCuerpo}>
+                    <p>{n.mensaje}</p>
+                    <p className="t-nota" style={{ marginTop: '0.25rem' }}>
+                      {fechaHora(n.fechaEnvio)}
+                    </p>
+                  </div>
+                  <span className="chip" data-tone="alert">
+                    Incidencia
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Paginacion
+              pagina={incidencias.pagina}
+              totalPaginas={incidencias.totalPaginas}
+              href={(n) => enlaceIncidencias(notificacionId, n)}
+              etiqueta="Páginas de incidencias"
+            />
+          </>
+        )}
+      </Panel>
+
       <Panel titulo="Tus notificaciones" nota="Mensajes que ha recibido tu cuenta.">
         {!propiasR.ok ? (
           <EstadoResultado resultado={propiasR} porDefecto="No se pudieron cargar tus notificaciones." />
@@ -166,7 +225,7 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
                 <div className={styles.panelCabecera} style={{ marginBottom: 0 }}>
                   <p className={styles.etiqueta}>
                     <Bell aria-hidden="true" style={{ display: 'inline', width: '1rem', height: '1rem' }} />{' '}
-                    {n.tipoNotificacion}
+                    {textoTipoNotificacion(n.tipoNotificacion)}
                   </p>
                   <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
                 </div>
@@ -176,6 +235,13 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
           </ul>
         )}
       </Panel>
+
+      <PanelPreferencias
+        modulo="admin"
+        resultado={preferenciasR}
+        tipos={TIPOS_COMUNICADO}
+        nota="Las incidencias de portería te llegan siempre, sin importar lo que elijas aquí."
+      />
 
       <p className="t-nota">
         <Send aria-hidden="true" style={{ display: 'inline', width: '1rem', height: '1rem' }} /> Los recordatorios de

@@ -16,6 +16,7 @@ import { Chip } from '@/components/ui/chip'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
 import {
   ESTADO_TRANSACCION_TEXTO,
+  textoTipoNotificacion,
   type EstadoTransaccion,
   type InmuebleResumen,
   type Notificacion,
@@ -175,7 +176,7 @@ export function AdminDashboard({
                     <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
                   </div>
                   <Chip tono="info" icono={Bell}>
-                    {n.tipoNotificacion}
+                    {textoTipoNotificacion(n.tipoNotificacion)}
                   </Chip>
                 </li>
               ))}

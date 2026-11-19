@@ -115,7 +115,62 @@ export type Regla = {
   zonas: Rompimiento[]
 }
 
+/** Reporte consolidado: acumulado a la fecha (no de un mes). */
+export type ReporteConsolidado = {
+  fechaGeneracion: string
+  totalInmuebles: number
+  inmueblesAlDia: number
+  inmueblesEnMora: number
+  inmueblesPendientes: number
+  /** Suma de los pagos APROBADO. */
+  recaudo: number
+  /** Saldo de los inmuebles VENCIDA. */
+  mora: number
+  /** Saldo de los inmuebles POR_VENCER. */
+  pendiente: number
+  inmuebles: {
+    inmuebleId: number
+    direccionInmueble: string
+    estadoPago: EstadoCartera
+    recaudado: number
+    saldoPendiente: number
+  }[]
+}
+
 // ---------- Notificaciones ----------
+
+/** Tipos que maneja el backend (Notificacion.java). */
+export const TIPOS_NOTIFICACION = [
+  'GENERAL',
+  'RESERVA',
+  'PAGO_PENDIENTE',
+  'PAGO_ACTUALIZADO',
+  'VISITA',
+  'INCIDENCIA',
+] as const
+
+export type TipoNotificacion = (typeof TIPOS_NOTIFICACION)[number]
+
+export const TIPO_NOTIFICACION_TEXTO: Record<TipoNotificacion, string> = {
+  GENERAL: 'General',
+  RESERVA: 'Reserva',
+  PAGO_PENDIENTE: 'Pago pendiente',
+  PAGO_ACTUALIZADO: 'Pago actualizado',
+  VISITA: 'Visita',
+  INCIDENCIA: 'Incidencia',
+}
+
+/** Etiqueta legible de un tipo; si llega uno desconocido se muestra tal cual. */
+export function textoTipoNotificacion(tipo: string | null | undefined) {
+  if (!tipo) return 'General'
+  return TIPO_NOTIFICACION_TEXTO[tipo.toUpperCase() as TipoNotificacion] ?? tipo
+}
+
+/** Tipos que el administrador puede elegir al enviar un comunicado (INCIDENCIA es de portería). */
+export const TIPOS_COMUNICADO = TIPOS_NOTIFICACION.filter((t) => t !== 'INCIDENCIA')
+
+/** Lista vacía = el usuario recibe todos los tipos. */
+export type Preferencias = { preferenciasNotificacion: string[] }
 
 export type Notificacion = {
   id: number

@@ -18,6 +18,7 @@ import { fechaLarga, pesos } from '@/lib/api/acciones'
 import {
   ESTADO_CARTERA_TEXTO,
   ESTADO_TRANSACCION_TEXTO,
+  textoTipoNotificacion,
   type Auto,
   type EstadoCuenta,
   type EstadoTransaccion,
@@ -292,7 +293,7 @@ export function ResidentDashboard({
                     <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
                   </div>
                   <span className="chip" data-tone="info">
-                    {n.tipoNotificacion}
+                    {textoTipoNotificacion(n.tipoNotificacion)}
                   </span>
                 </li>
               ))}

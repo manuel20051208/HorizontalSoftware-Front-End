@@ -2,8 +2,9 @@ import { Bell } from 'lucide-react'
 import type { Metadata } from 'next'
 import { BotonAccion } from '@/components/gestion/acciones-cliente'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
+import { PanelPreferencias } from '@/components/gestion/preferencias'
 import styles from '@/components/gestion/gestion.module.css'
-import type { Notificacion } from '@/lib/api/tipos'
+import { TIPOS_COMUNICADO, textoTipoNotificacion, type Notificacion, type Preferencias } from '@/lib/api/tipos'
 import { marcarNotificacionesLeidas } from '@/lib/cuenta/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
@@ -24,7 +25,10 @@ function fechaHora(valor: string) {
 
 export default async function NotificacionesResidentePage() {
   await requerirSesion('residente')
-  const r = await apiConSesion<Listado<Notificacion>>('residente', listado(RUTAS_API.notificaciones), { metodo: 'GET' })
+  const [r, preferenciasR] = await Promise.all([
+    apiConSesion<Listado<Notificacion>>('residente', listado(RUTAS_API.notificaciones), { metodo: 'GET' }),
+    apiConSesion<Preferencias>('residente', RUTAS_API.preferencias, { metodo: 'GET' }),
+  ])
   const notificaciones = listaDe(r).sort((a, b) => b.id - a.id)
 
   return (
@@ -63,13 +67,15 @@ export default async function NotificacionesResidentePage() {
                   </p>
                 </div>
                 <span className="chip" data-tone="info">
-                  {n.tipoNotificacion}
+                  {textoTipoNotificacion(n.tipoNotificacion)}
                 </span>
               </li>
             ))}
           </ul>
         )}
       </Panel>
+
+      <PanelPreferencias modulo="residente" resultado={preferenciasR} tipos={TIPOS_COMUNICADO} />
     </div>
   )
 }

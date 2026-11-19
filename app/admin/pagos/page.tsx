@@ -1,7 +1,8 @@
 import { Check, CircleAlert, Clock, RotateCcw, XCircle } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BotonAccion } from '@/components/gestion/acciones-cliente'
+import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
+import { CampoSelect } from '@/components/gestion/campos'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
@@ -10,8 +11,9 @@ import {
   type EstadoTransaccion,
   type InmuebleResumen,
   type Pago,
+  type Pasarela,
 } from '@/lib/api/tipos'
-import { anularPago, reembolsarPago } from '@/lib/admin/acciones'
+import { anularPago, guardarPasarela, reembolsarPago } from '@/lib/admin/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -42,12 +44,14 @@ export default async function PagosPage({ searchParams }: Props) {
   if (inmuebleId > 0) consulta.set('inmuebleId', String(inmuebleId))
   if (estado) consulta.set('estado', estado)
 
-  const [pagosR, inmueblesR] = await Promise.all([
+  const [pagosR, inmueblesR, pasarelaR] = await Promise.all([
     apiConSesion<Listado<Pago>>('admin', listado(consulta.size ? `${RUTAS_API.pagosAdmin}?${consulta}` : RUTAS_API.pagosAdmin), {
       metodo: 'GET',
     }),
     apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
+    apiConSesion<Pasarela>('admin', RUTAS_API.pasarela, { metodo: 'GET' }),
   ])
+  const pasarela = pasarelaR.ok ? pasarelaR.datos : null
   const pagos = listaDe(pagosR)
   const inmuebles = listaDe(inmueblesR)
 
@@ -188,6 +192,54 @@ export default async function PagosPage({ searchParams }: Props) {
               </tbody>
             </table>
           </div>
+        )}
+      </Panel>
+
+      <Panel
+        titulo="Pasarela de pagos"
+        id="pasarela"
+        nota="Con la pasarela inactiva, los residentes no pueden pagar en línea. El nombre, las URLs y las llaves se configuran en el servidor."
+        acciones={
+          pasarela && (
+            <span className="chip" data-tone={pasarela.estado === 'ACTIVA' ? 'ok' : 'neutral'}>
+              {pasarela.estado === 'ACTIVA' ? <Check aria-hidden="true" /> : <XCircle aria-hidden="true" />}
+              {pasarela.estado === 'ACTIVA' ? 'Activa' : 'Inactiva'}
+            </span>
+          )
+        }
+      >
+        {!pasarelaR.ok ? (
+          <EstadoResultado resultado={pasarelaR} porDefecto="No se pudo consultar la pasarela." />
+        ) : (
+          pasarela && (
+            <>
+              <dl className={styles.datos}>
+                <div>
+                  <dt>Pasarela</dt>
+                  <dd>{pasarela.nombrePasarela || '—'}</dd>
+                </div>
+                <div>
+                  <dt>URL del API</dt>
+                  <dd>{pasarela.urlApi || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Llave</dt>
+                  <dd>{pasarela.apiKey || '—'}</dd>
+                </div>
+              </dl>
+              <FormularioAccion accion={guardarPasarela} texto="Guardar estado" variante="secondary">
+                <CampoSelect
+                  nombre="estado"
+                  etiqueta="Estado"
+                  valor={pasarela.estado}
+                  opciones={[
+                    { valor: 'ACTIVA', texto: 'Activa: se puede pagar en línea' },
+                    { valor: 'INACTIVA', texto: 'Inactiva: pagos en línea suspendidos' },
+                  ]}
+                />
+              </FormularioAccion>
+            </>
+          )
         )}
       </Panel>
 

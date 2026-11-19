@@ -1,14 +1,15 @@
-import { Car, Clock, LogIn, Search, ShieldCheck, ShieldX, UserCheck } from 'lucide-react'
+import { Car, Clock, LogIn, Search, ShieldCheck, ShieldX, UserCheck, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BotonAccion } from '@/components/gestion/acciones-cliente'
+import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
+import { CampoArea } from '@/components/gestion/campos'
 import { EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import gestion from '@/components/gestion/gestion.module.css'
 import { ChipReserva } from '@/components/ui/chip-reserva'
 import { horaLegible } from '@/lib/api/acciones'
 import { horaReserva, horarioReserva, hoyColombia, porInicio } from '@/lib/api/reservas'
 import type { Acceso, Anfitrion, Duenos, InvitadoConsulta, Reserva } from '@/lib/api/tipos'
-import { registrarIngreso } from '@/lib/vigilante/acciones'
+import { registrarIncidencia, registrarIngreso } from '@/lib/vigilante/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -40,8 +41,9 @@ export default async function SecurityPage({ searchParams }: Props) {
     identificacion
       ? apiConSesion<InvitadoConsulta>('vigilante', RUTAS_API.vigilanteInvitado(identificacion), { metodo: 'GET' })
       : Promise.resolve(null),
-    autoId
-      ? apiConSesion<Duenos>('vigilante', RUTAS_API.autoDuenos(autoId, inmuebleId || undefined), { metodo: 'GET' })
+    // El back exige los dos: el id del auto y el inmueble
+    autoId && inmuebleId
+      ? apiConSesion<Duenos>('vigilante', RUTAS_API.autoDuenos(autoId, inmuebleId), { metodo: 'GET' })
       : Promise.resolve(null),
   ])
 
@@ -75,6 +77,12 @@ export default async function SecurityPage({ searchParams }: Props) {
             <p className={gestion.sub}>
               Consulta si una persona puede ingresar, registra el ingreso de invitados y revisa las reservas de hoy.
             </p>
+          </div>
+          <div className={gestion.accionesCabecera}>
+            <Link href="/vigilante/invitados" prefetch={false} className="btn" data-variant="secondary">
+              <Users aria-hidden="true" />
+              Invitados registrados
+            </Link>
           </div>
         </header>
 
@@ -196,7 +204,7 @@ export default async function SecurityPage({ searchParams }: Props) {
         </Panel>
 
         {/* ---------- Dueños de un auto ---------- */}
-        <Panel titulo="¿De quién es este auto?" nota="Consulta los dueños registrados de un vehículo por su identificador.">
+        <Panel titulo="¿De quién es este auto?" nota="Consulta los dueños registrados de un vehículo por su identificador y el inmueble.">
           <form method="get" className={gestion.enLinea} style={{ marginBottom: duenos ? '1.25rem' : 0 }}>
             <div className={gestion.grupo}>
               <label htmlFor="auto-id" className={gestion.etiqueta}>
@@ -215,7 +223,7 @@ export default async function SecurityPage({ searchParams }: Props) {
             </div>
             <div className={gestion.grupo}>
               <label htmlFor="auto-inmueble" className={gestion.etiqueta}>
-                Inmueble <span className={gestion.opcional}>(opcional)</span>
+                Inmueble
               </label>
               <input
                 id="auto-inmueble"
@@ -225,6 +233,7 @@ export default async function SecurityPage({ searchParams }: Props) {
                 pattern="\d*"
                 className={gestion.entrada}
                 defaultValue={inmuebleId || ''}
+                required
               />
             </div>
             <button type="submit" className="btn" data-variant="secondary">
@@ -249,6 +258,24 @@ export default async function SecurityPage({ searchParams }: Props) {
             ) : (
               <Vacio>Ese auto no tiene dueños registrados.</Vacio>
             ))}
+        </Panel>
+
+        {/* ---------- Incidencias ---------- */}
+        <Panel
+          titulo="Reportar una incidencia"
+          id="incidencia"
+          nota="Llega de inmediato a todos los administradores activos."
+        >
+          <FormularioAccion accion={registrarIncidencia} texto="Enviar a la administración" textoEnviando="Enviando…">
+            <CampoArea
+              nombre="descripcion"
+              etiqueta="¿Qué pasó?"
+              requerido
+              maxLength={300}
+              filas={3}
+              placeholder="Por ejemplo: la puerta del parqueadero de la torre B no cierra."
+            />
+          </FormularioAccion>
         </Panel>
 
         {/* ---------- Reservas de hoy ---------- */}

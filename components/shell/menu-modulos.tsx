@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   Car,
+  ChartColumn,
   ChevronDown,
   ClipboardList,
   FileText,
@@ -12,6 +13,7 @@ import {
   HousePlus,
   Megaphone,
   Receipt,
+  TriangleAlert,
   UserPlus,
   Users,
   Wallet,
@@ -37,6 +39,7 @@ const MENUS: Record<'admin' | 'residente', Menu> = {
           { texto: 'Liquidaciones', nota: 'Genera y ajusta el cobro del periodo', icono: FileText, href: '/admin/liquidaciones' },
           { texto: 'Pagos recibidos', nota: 'Movimientos, anulaciones y reembolsos', icono: Wallet, href: '/admin/pagos' },
           { texto: 'Conciliar pago', nota: 'Registra un pago desde el inmueble', icono: Receipt, href: '/admin/inmuebles' },
+          { texto: 'Reporte consolidado', nota: 'Recaudo, mora y saldos por inmueble', icono: ChartColumn, href: '/admin/reportes' },
         ],
       },
       {
@@ -53,6 +56,7 @@ const MENUS: Record<'admin' | 'residente', Menu> = {
           { texto: 'Zonas comunes', nota: 'Salón, BBQ, canchas y más', icono: ClipboardList, href: '/admin/zonas-comunes' },
           { texto: 'Reglas de reserva', nota: 'Horarios y condiciones de uso', icono: CalendarDays, href: '/admin/reglas-reserva' },
           { texto: 'Comunicados', nota: 'Avisos enviados y recibidos', icono: Bell, href: '/admin/notificaciones' },
+          { texto: 'Incidencias', nota: 'Lo que reporta portería', icono: TriangleAlert, href: '/admin/notificaciones#incidencias' },
         ],
       },
       {
