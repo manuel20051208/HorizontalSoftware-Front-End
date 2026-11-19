@@ -113,6 +113,7 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
 | GET | `/api/admin/resumen?periodo=yyyy-MM-dd` | `periodo` opcional | 200 `ResumenAdmin` |
+| GET | `/api/admin/reportes` | - | 200 `ReporteConsolidado` |
 | POST | `/api/admin/liquidaciones` | `Generar` | 201 `Liquidacion` |
 | POST | `/api/admin/liquidaciones/masiva` | `{periodo, fechaLimite?}` | 200 `{generadas, omitidas:[{inmuebleId, motivo}]}` |
 | GET | `/api/admin/liquidaciones?inmuebleId=&estado=&periodo=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Liquidacion>` (periodo más reciente primero) |
@@ -124,7 +125,11 @@ Todos: **ADMIN**.
 - `Generar`: `{inmuebleId, periodo, fechaLimite?, cuotaAdministracion?, valorServiciosComunes?}`. El `periodo` se normaliza al día 1; `fechaLimite` por defecto es el día 10; las tarifas por defecto se copian de la liquidación anterior.
 - `Liquidacion`: `{id, inmuebleId, direccionInmueble, periodo, fechaGeneracion, fechaLimite, cuotaAdministracion, valorServiciosComunes, valorMultas, total, estado, vencida}`. `estado`: `PENDIENTE`, `AL_DIA`, `EN_MORA`.
 - `ResumenAdmin`: `{periodo, totalInmuebles, alDia, porVencer, vencidas, sinLiquidacion, porCobrar, recaudoMes}`.
-- Una tarea programada pasa a `EN_MORA` las liquidaciones vencidas sin pagar todos los días a las 00:05 (America/Bogota).
+- `ReporteConsolidado` (caso de uso *Generar reportes consolidados*): `{fechaGeneracion, totalInmuebles, inmueblesAlDia, inmueblesEnMora, inmueblesPendientes, recaudo, mora, pendiente, inmuebles:[{inmuebleId, direccionInmueble, estadoPago, recaudado, saldoPendiente}]}`. `recaudo` = suma de los pagos `APROBADO`; `mora` = saldo de los inmuebles `VENCIDA`; `pendiente` = saldo de los inmuebles `POR_VENCER`. Es el acumulado a la fecha, no de un mes.
+- Tareas programadas (America/Bogota), sin endpoint:
+  - El día 1 de cada mes a las 00:00 genera la liquidación del periodo para todos los inmuebles activos, igual que `generar-masiva` sin `fechaLimite` (vence el día 10).
+  - Todos los días a las 00:05 pasa a `EN_MORA` las liquidaciones vencidas sin pagar y envía a los residentes de cada inmueble afectado una notificación `PAGO_PENDIENTE`.
+  - Cada hora en punto envía una notificación `RESERVA` («Recordatorio: su reserva de … empieza el …») a quien tenga una reserva que empiece entre 24 y 25 horas después.
 
 ### 4.2 Inmuebles - `/api/admin/inmuebles` (todos **ADMIN**)
 | Método | Ruta | Cuerpo | Respuesta |
@@ -180,8 +185,13 @@ Todos: **ADMIN**.
 |---|---|---|---|
 | POST | `/api/admin/notificaciones` | `{mensaje, tipoNotificacion?, usuarioIds?, inmuebleId?}` | 201 `Notificacion` |
 | GET | `/api/admin/notificaciones/{id}/lectura` | - | 200 `{notificacionId, leidos:[..], pendientes:[..]}` |
+| GET | `/api/admin/notificaciones/incidencias?pagina=&tamano=` | - | 200 `Pagina<Notificacion>` (incidencias de portería, más recientes primero) |
 
 Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se envía ninguno, la reciben todos los residentes activos. `tipoNotificacion` por defecto `GENERAL`. `leidos`/`pendientes` son `{usuarioId, nombreCompleto}`.
+
+Las incidencias operativas son notificaciones de tipo `INCIDENCIA` que registra el vigilante (sección 9). Les llegan a todos los administradores activos, así que también aparecen en `GET /api/notificaciones` y se marcan como leídas con `PUT /api/notificaciones/leida`.
+
+Una notificación solo se entrega a los destinatarios que aceptan ese tipo según sus preferencias (sección 6). Si ninguno lo acepta, `POST /api/admin/notificaciones` responde **409**. Las de tipo `INCIDENCIA` se entregan siempre.
 
 ### 4.7 Pagos y pasarela - `/api/admin` (todos **ADMIN**)
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
@@ -276,8 +286,12 @@ Los segundos se ignoran (se guarda al minuto).
 |---|---|---|
 | GET | `/api/notificaciones?pagina=&tamano=` | 200 `Pagina<Notificacion>` (las del usuario, más recientes primero) |
 | PUT | `/api/notificaciones/leida` | 204 (marca todas como leídas) |
+| GET | `/api/notificaciones/preferencias` | 200 `Preferencias` |
+| PUT | `/api/notificaciones/preferencias` | cuerpo `{tipoNotificacion}` → 200 `Preferencias` |
 
 `Notificacion`: `{id, mensaje, tipoNotificacion, fechaEnvio}` (`fechaEnvio` en formato `yyyy-MM-ddTHH:mm:ss`).
+
+`Preferencias`: `{preferenciasNotificacion:[..]}`, los tipos de notificación que el usuario quiere recibir (`GENERAL`, `RESERVA`, `PAGO_PENDIENTE`, `PAGO_ACTUALIZADO`, `VISITA`, ...). **Lista vacía = recibe todos** (así empieza toda cuenta). El `PUT` alterna un tipo: si no estaba lo agrega, si ya estaba lo quita; el tipo se guarda en mayúsculas. Con al menos un tipo en la lista, el usuario solo recibe esos. Responde 409 si la cuenta está inactiva.
 
 ## 7. Pagos compartidos y consultas
 
@@ -314,12 +328,28 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 |---|---|---|
 | GET | `/api/vigilante/reservas?estado=&pagina=&tamano=` | 200 `Pagina<Reserva>` (todas, por `fechaHoraInicio`; `estado` opcional como en 5.3) |
 | GET | `/api/vigilante/zonas-comunes/acceso?identificacion=` | 200 `Acceso` |
+| GET | `/api/vigilante/invitados?pagina=&tamano=` | 200 `Pagina<Invitado>` (todos los invitados registrados, por nombre) |
 | GET | `/api/vigilante/invitados/{identificacion}` | 200 `InvitadoConsulta` |
 | POST | `/api/vigilante/invitados/{identificacion}/ingreso` | 200 `Ingreso` |
+| POST | `/api/vigilante/incidencias` | cuerpo `{descripcion}` (máx. 300) → 201 `Notificacion` |
 
 - `Acceso`: `{identificacion, nombreCompleto, permitido, motivo, zonasPermitidas:[{zonaComunId, nombreZonaComun, horaInicio, horaFin, reservaHasta}]}`. `permitido`: la persona tiene **ahora** una reserva `EN_CURSO` de una zona activa (suya o de su anfitrión, si es invitado). Una reserva solo programada o ya finalizada no da acceso. `horaInicio`/`horaFin` son el horario de la zona y `reservaHasta` es cuándo termina la reserva que da el acceso.
+- `GET /api/vigilante/invitados`: lista todos los invitados (usuarios autorizados) de la copropiedad, activos o no, ordenados por `nombreCompleto` (desempate por `id`). Cada fila es un `Invitado` (5.2): `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente}`; `vigente` = activo y autorización no vencida. Ejemplo:
+  ```json
+  {
+    "contenido": [
+      { "id": 10, "identificacion": 1090123456, "nombreCompleto": "Ana Invitada", "correoElectronico": "ana@mail.com",
+        "active": true, "venceAutorizacion": "2026-11-30", "vigente": true }
+    ],
+    "pagina": 0,
+    "tamano": 20,
+    "totalElementos": 1,
+    "totalPaginas": 1
+  }
+  ```
 - `InvitadoConsulta`: `{existe, vigente, invitado}`.
 - `Ingreso`: `{permitido, mensaje, visitante, inmueblesNotificados:[..]}`. Registrar el ingreso notifica a los inmuebles anfitriones.
+- Incidencia operativa: se guarda como `Notificacion` de tipo `INCIDENCIA` con el mensaje `Incidencia reportada por <vigilante>: <descripcion>` y les llega a los administradores activos (409 si no hay ninguno). El administrador las consulta en `GET /api/admin/notificaciones/incidencias`.
 
 ## 10. Resumen de acceso por rol
 
@@ -334,3 +364,30 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 | ADMIN o VIGILANTE | `/api/invitados/{id}/residentes`, `/api/autos/{id}/duenos` |
 
 La protección está en anotaciones sobre cada método, no en reglas por URL. Una prueba garantiza que ningún endpoint quede sin etiqueta.
+
+## 11. Cambios recientes del contrato
+
+Lo que el front debe tener en cuenta desde la última versión de este documento (11-nov-2026). El resto del contrato no cambió.
+
+### 17-nov-2026 - endpoint nuevo
+| Rol | Endpoint | Para qué | Sección |
+|---|---|---|---|
+| VIGILANTE | `GET /api/vigilante/invitados?pagina=&tamano=` | Lista paginada de todos los invitados registrados (`Pagina<Invitado>`, por nombre). | 9 |
+
+### 14-nov-2026 - endpoints nuevos
+| Rol | Endpoint | Para qué | Sección |
+|---|---|---|---|
+| ADMIN | `GET /api/admin/reportes` | Reporte consolidado: recaudo, mora y pendientes, con el detalle por inmueble (`ReporteConsolidado`). | 4.1 |
+| ADMIN | `GET /api/admin/notificaciones/incidencias?pagina=&tamano=` | Incidencias operativas que registra portería, paginadas. | 4.6 |
+| VIGILANTE | `POST /api/vigilante/incidencias` | Registra una incidencia (`{descripcion}`, máx. 300). Responde 201 `Notificacion`. | 9 |
+| Autenticado | `GET /api/notificaciones/preferencias` | Tipos de notificación que el usuario quiere recibir. | 6 |
+| Autenticado | `PUT /api/notificaciones/preferencias` | Activa o desactiva un tipo (`{tipoNotificacion}`); alterna. | 6 |
+
+**Comportamiento que cambia en endpoints que ya existían**
+- `POST /api/admin/notificaciones` y las notificaciones automáticas (reserva, pago, visita) **respetan las preferencias** de cada usuario: solo llegan a quien acepta ese tipo. Lista vacía = recibe todos. Si ningún destinatario acepta el tipo, `POST /api/admin/notificaciones` responde **409**. Las de tipo `INCIDENCIA` se entregan siempre.
+- Las incidencias llegan a los administradores activos como notificaciones de tipo `INCIDENCIA`: aparecen en `GET /api/notificaciones` y se marcan leídas con `PUT /api/notificaciones/leida`. Hay un tipo nuevo para mostrar en la bandeja.
+
+### Sin cambios para el front
+- **Zonas comunes del residente** (`GET /api/residente/zonas-comunes`): misma ruta y misma respuesta; solo cambió cómo se resuelve el inmueble por dentro.
+- **Base de datos (V4):** el borrado en cascada sigue el diagrama de clases (composición = cascada, agregación = borrado normal). No hay endpoints que borren inmuebles, residentes, pagos ni zonas, así que no cambia ninguna respuesta. El único `DELETE` es `/api/residente/reservas/{id}`.
+- **Tipos del modelo** (`contrasena` como `String`, `Lombok`): son cambios internos; los cuerpos de `/api/auth/**` son los mismos.
