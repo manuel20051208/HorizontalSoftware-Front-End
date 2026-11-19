@@ -1,11 +1,13 @@
 import { LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { Logo } from '@/components/brand/logo'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import type { Notificacion } from '@/lib/api/tipos'
 import { cerrarSesion } from '@/lib/auth/acciones'
 import { RUTAS_API, type Modulo } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
+import { COOKIE_VISTAS, contarSinLeer } from '@/lib/cuenta/no-leidas'
 import type { Usuario } from '@/lib/usuarios/tipos'
 import styles from './app-shell.module.css'
 import { Campana } from './campana'
@@ -13,6 +15,8 @@ import { MenuModulos } from './menu-modulos'
 
 /** Cuántas notificaciones muestra el panel de la campana. */
 const EN_CAMPANA = 6
+/** Cuántas se traen para contar las sin leer (la campana muestra «9+» desde 10). */
+const PARA_CONTAR = 50
 
 function iniciales(nombre: string) {
   return nombre
@@ -37,14 +41,19 @@ export async function AppShell({
   children: React.ReactNode
 }) {
   // La campana: las últimas notificaciones y, de /api/auth/me, si hay alguna sin leer
-  const [notificacionesR, meR] = await Promise.all([
-    apiConSesion<Listado<Notificacion>>(modulo, listado(RUTAS_API.notificaciones, EN_CAMPANA), { metodo: 'GET' }),
+  const [notificacionesR, meR, almacen] = await Promise.all([
+    apiConSesion<Listado<Notificacion>>(modulo, listado(RUTAS_API.notificaciones, PARA_CONTAR), { metodo: 'GET' }),
     apiConSesion<Usuario>(modulo, RUTAS_API.me, { metodo: 'GET' }),
+    cookies(),
   ])
-  const notificaciones = listaDe(notificacionesR)
-    .sort((a, b) => b.id - a.id)
-    .slice(0, EN_CAMPANA)
-  const sinLeer = meR.ok ? meR.datos.notificacionLeida === false : false
+  const todas = listaDe(notificacionesR).sort((a, b) => b.id - a.id)
+  const sinLeer = contarSinLeer(
+    todas,
+    meR.ok ? meR.datos.notificacionLeida : undefined,
+    meR.ok ? meR.datos.id : undefined,
+    almacen.get(COOKIE_VISTAS)?.value,
+  )
+  const notificaciones = todas.slice(0, EN_CAMPANA)
   // Portería no tiene pantalla de notificaciones: su campana solo muestra el panel
   const verTodasHref = modulo === 'vigilante' ? undefined : `/${modulo}/notificaciones`
 

@@ -30,15 +30,24 @@
   height: 1.25rem;
 }
 
-/* Punto de mensajes sin leer */
-.boton i {
+/* Número de notificaciones sin leer, arriba a la derecha de la campana */
+.contador {
   position: absolute;
-  top: 10px;
-  right: 11px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--alerta-celda);
+  top: 4px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3125rem;
+  border-radius: 999px;
+  background: var(--sello);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  font-stretch: 112%;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   box-shadow: 0 0 0 2px var(--papel-solido);
 }
 

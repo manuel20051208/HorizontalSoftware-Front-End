@@ -1,8 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { errorDeApi, exito, texto, type EstadoAccion } from '@/lib/api/acciones'
-import type { Preferencias } from '@/lib/api/tipos'
+import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
+import type { Notificacion, Preferencias } from '@/lib/api/tipos'
+import { COOKIE_VISTAS } from '@/lib/cuenta/no-leidas'
 import { llamarApi } from '@/lib/auth/api'
 import { apiConSesion } from '@/lib/auth/sesion'
 import { RUTAS_API, type Modulo } from '@/lib/auth/config'
@@ -127,10 +130,29 @@ export async function cambiarPreferencia(
   return exito(recibir ? 'Volverás a recibir estos avisos.' : 'Ya no recibirás estos avisos.')
 }
 
-/** La campana del shell marca como leídas las notificaciones del usuario. */
+/**
+ * La campana del shell marca como leídas las notificaciones del usuario.
+ * El back solo guarda «leídas sí o no»; para contar las nuevas, aquí se recuerda en una cookie
+ * la notificación más reciente que el usuario ya vio (ver contarSinLeer).
+ */
 export async function marcarNotificacionesLeidas(modulo: Modulo): Promise<EstadoAccion> {
   const r = await apiConSesion(modulo, RUTAS_API.notificacionesLeidas, { metodo: 'PUT' })
   if (!r.ok) return errorDeApi(r, 'No se pudieron marcar las notificaciones.')
+
+  const [ultimasR, meR] = await Promise.all([
+    apiConSesion<Listado<Notificacion>>(modulo, listado(RUTAS_API.notificaciones, 20), { metodo: 'GET' }),
+    apiConSesion<{ id: number }>(modulo, RUTAS_API.me, { metodo: 'GET' }),
+  ])
+  if (meR.ok) {
+    const ultimoId = Math.max(0, ...listaDe(ultimasR).map((n) => n.id))
+    ;(await cookies()).set(COOKIE_VISTAS, `${meR.datos.id}:${ultimoId}`, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  }
   // 'layout': también se refresca el shell, donde la campana muestra el punto de no leídas
   revalidatePath(`/${modulo}`, 'layout')
   return exito('Notificaciones marcadas como leídas.')

@@ -32,7 +32,8 @@ export function Campana({
 }: {
   modulo: Modulo
   notificaciones: Notificacion[]
-  sinLeer: boolean
+  /** Cuántas sin leer; 0 = sin globo. */
+  sinLeer: number
   verTodasHref?: string
 }) {
   const [abierta, setAbierta] = useState(false)
@@ -76,19 +77,25 @@ export function Campana({
         ref={boton}
         type="button"
         className={styles.boton}
-        aria-label={sinLeer ? 'Notificaciones, hay mensajes nuevos' : 'Notificaciones'}
+        aria-label={
+          sinLeer ? `Notificaciones, ${sinLeer} sin leer` : 'Notificaciones'
+        }
         aria-expanded={abierta}
         aria-controls={idPanel}
         onClick={() => setAbierta((v) => !v)}
       >
         <Bell aria-hidden="true" />
-        {sinLeer && <i aria-hidden="true" />}
+        {sinLeer > 0 && (
+          <span className={styles.contador} aria-hidden="true">
+            {sinLeer > 9 ? '9+' : sinLeer}
+          </span>
+        )}
       </button>
 
       <div id={idPanel} className={styles.panel} hidden={!abierta} role="region" aria-label="Notificaciones">
         <div className={styles.cabecera}>
           <p className={styles.titulo}>Notificaciones</p>
-          {sinLeer && notificaciones.length > 0 && (
+          {sinLeer > 0 && (
             <button type="button" className={styles.marcar} onClick={marcar} disabled={marcando}>
               <CheckCheck aria-hidden="true" />
               {marcando ? 'Marcando…' : 'Marcar como leídas'}
