@@ -17,6 +17,7 @@ import { Chip } from '@/components/ui/chip'
 import { type CampoCuenta, crearCuenta, type EstadoCrear } from '@/lib/usuarios/acciones'
 import { type Inmueble, TIPOS_CUENTA, type TipoCuenta } from '@/lib/usuarios/tipos'
 import styles from './usuarios.module.css'
+import { VerificarCorreo } from './verificar-correo'
 
 const OPCIONES: { tipo: TipoCuenta; icono: LucideIcon; descripcion: string }[] = [
   { tipo: 'RESIDENTE', icono: KeyRound, descripcion: 'Vive en un apartamento del conjunto.' },
@@ -363,13 +364,11 @@ function CuentaCreada({
         </div>
       </dl>
 
-      <p className={styles.activacion}>
-        {cuenta.activa
-          ? 'La cuenta ya está activa: puede ingresar ahora.'
-          : cuenta.tipo === 'ADMINISTRADOR'
-            ? 'La cuenta se creó, pero no se pudo activar. Intenta activarla más tarde.'
-            : 'La cuenta se creó, pero no se pudo activar. Actívala desde la lista de usuarios.'}
-      </p>
+      {cuenta.activa ? (
+        <p className={styles.activacion}>La cuenta ya está activa: puede ingresar ahora.</p>
+      ) : (
+        <VerificarCorreo identificacion={cuenta.identificacion} correo={cuenta.correo} nombre={cuenta.nombre} />
+      )}
 
       <div className={styles.exitoAcciones}>
         <button type="button" className="btn" data-variant="secondary" onClick={copiar}>

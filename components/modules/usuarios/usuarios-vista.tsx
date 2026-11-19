@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CircleAlert, Clock, UserPlus } from 'lucide-react'
+import { ArrowLeft, Check, CircleAlert, Clock, MailWarning, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
 import { listaDe, type Listado } from '@/lib/api/paginacion'
@@ -7,6 +7,7 @@ import { alternarActivo } from '@/lib/usuarios/acciones'
 import { esTipoCuenta, TIPOS_CUENTA, type TipoCuenta, type Usuario } from '@/lib/usuarios/tipos'
 import { BotonActivo } from './boton-activo'
 import styles from './usuarios.module.css'
+import { VerificarCorreo } from './verificar-correo'
 
 type Estado = 'activas' | 'inactivas'
 
@@ -119,6 +120,8 @@ export function UsuariosVista({
             <tbody>
               {usuarios.map((u) => {
                 const activa = u.active === true
+                // Sin verificar el correo la cuenta no se puede activar: primero va el código
+                const pendiente = !activa && u.correoVerificado === false
                 const tipoU = u.tipoUsuario as TipoCuenta
                 return (
                   <tr key={u.id}>
@@ -135,6 +138,10 @@ export function UsuariosVista({
                         <Chip tono="ok" icono={Check}>
                           Activa
                         </Chip>
+                      ) : pendiente ? (
+                        <Chip tono="wait" icono={MailWarning}>
+                          Por verificar
+                        </Chip>
                       ) : (
                         <Chip tono="wait" icono={Clock}>
                           Inactiva
@@ -145,13 +152,22 @@ export function UsuariosVista({
                       {u.fechaCreacionCuenta ? fecha.format(new Date(`${u.fechaCreacionCuenta}T00:00:00Z`)) : '—'}
                     </td>
                     <td className={styles.cAccion}>
-                      {/* El backend no deja activar ni desactivar administradores desde aquí */}
-                      {tipoU !== 'ADMINISTRADOR' && (
+                      {pendiente ? (
+                        <VerificarCorreo
+                          identificacion={u.identificacion}
+                          correo={u.correoElectronico}
+                          nombre={u.nombreCompleto}
+                          compacto
+                        />
+                      ) : (
+                        /* El backend no deja activar ni desactivar administradores desde aquí */
+                        tipoU !== 'ADMINISTRADOR' && (
                         <BotonActivo
                           activa={activa}
                           nombre={u.nombreCompleto}
                           accion={alternarActivo.bind(null, u.identificacion)}
                         />
+                        )
                       )}
                     </td>
                   </tr>

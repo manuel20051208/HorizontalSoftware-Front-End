@@ -32,6 +32,8 @@ export type Usuario = {
   fechaCreacionCuenta: string | null
   inmuebleId: number | null
   direccionInmueble: string | null
+  /** false = el administrador aún no confirma el código enviado al correo: la cuenta no se puede activar. */
+  correoVerificado?: boolean | null
 }
 
 /** InmuebleResponses.Resumen (solo lo que usa el formulario) */

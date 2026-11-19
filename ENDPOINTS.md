@@ -88,7 +88,6 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 | POST | `/api/auth/login` | Público | `{correo, contrasena}` | 200 `Sesion` |
 | POST | `/api/auth/refresh` | Público | `{refreshToken}` | 200 `Sesion` |
 | POST | `/api/auth/logout` | Autenticado | - | 204 (revoca el refresh) |
-| POST | `/api/auth/activar` | Público | `{correo, contrasena}` | 200 `{active, mensaje}` |
 | POST | `/api/auth/recuperar-contrasena` | Público | `{correo}` | 202 `{mensaje}` (igual exista o no el correo) |
 | PUT | `/api/auth/contrasena` | Autenticado | `{contrasenaActual, contrasenaNueva}` | 204 |
 | GET | `/api/auth/me` | Autenticado | - | 200 `Usuario` |
@@ -100,12 +99,15 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
   "refresh_token": "...",
   "usuario": { "id": 1, "identificacion": 1000000001, "nombreCompleto": "...", "correoElectronico": "...",
                "tipoUsuario": "ADMINISTRADOR", "active": true, "notificacionLeida": false,
-               "fechaCreacionCuenta": "2026-11-08", "inmuebleId": null, "direccionInmueble": null }
+               "fechaCreacionCuenta": "2026-11-08", "inmuebleId": null, "direccionInmueble": null,
+               "correoVerificado": true }
 }
 ```
 > Nota: `refreshToken` va en camelCase en el cuerpo de `/refresh`, pero llega como `refresh_token` en la respuesta.
 
 **Contraseña nueva:** mínimo 8 caracteres, con al menos una letra y un número.
+
+**No hay activación pública.** `POST /api/auth/activar` ya no existe: una cuenta nueva solo se activa cuando la administración verifica su correo con el código de 4 cifras (sección 4.3).
 
 ## 4. Administrador
 
@@ -153,10 +155,27 @@ Todos: **ADMIN**.
 |---|---|---|---|
 | POST | `/api/admin/usuarios` | `CrearUsuario` | 201 `Usuario` |
 | GET | `/api/admin/usuarios?tipo=&active=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Usuario>` (por nombre) |
-| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo) |
+| POST | `/api/admin/usuarios/{identificacion}/verificar-correo` | `{codigo}` (4 cifras) | 200 `Usuario` (correo verificado y cuenta activa) |
+| POST | `/api/admin/usuarios/{identificacion}/reenviar-codigo` | - | 202 `{mensaje}` |
+| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo; 409 si intenta activar una cuenta con el correo sin verificar) |
+
+**Verificación del correo (la única forma de activar una cuenta nueva).**
+1. `POST /api/admin/usuarios` crea la cuenta **inactiva** (`active: false`, `correoVerificado: false`) y envía un código de **4 cifras** al correo que escribió la administración.
+2. El usuario se lo dicta a la administración, que lo confirma con `verificar-correo`. Con el código correcto el correo queda verificado y la cuenta **activa**: ya puede iniciar sesión.
+3. El código se guarda cifrado, **vence a los 15 minutos** y admite **máximo 5 intentos fallidos**. `reenviar-codigo` envía uno nuevo, que **reemplaza** al anterior y **reinicia** los intentos.
+4. El `PATCH .../activo` no salta este paso: con el correo sin verificar responde 409. Desactivar y volver a activar una cuenta ya verificada funciona igual que antes. Los invitados (`USUARIO_AUTORIZADO`) no pasan por aquí: los autoriza su residente.
+5. Las cuentas que ya estaban activas antes de este cambio quedaron verificadas. Las inactivas quedaron **por verificar**: la administración les reenvía el código desde la lista.
+
+| Código | Cuándo (el front muestra el `mensaje` del back tal cual) |
+|---|---|
+| 400 | Código incorrecto (`"Codigo incorrecto. Quedan N intentos"`) o que no son 4 cifras (`errores.codigo`) |
+| 403 | La cuenta es de un invitado |
+| 404 | No existe un usuario con esa identificación |
+| 409 | El correo ya está verificado; no hay código vigente; el código venció; se agotaron los intentos |
 
 `CrearUsuario`: `{tipoUsuario, identificacion, nombreCompleto, fechaNacimiento?, correoElectronico, contrasena, inmuebleId?, inicioContrato?, venceContrato?}`.
 `tipoUsuario`: `ADMINISTRADOR`, `RESIDENTE` o `VIGILANTE`. `inmuebleId` es obligatorio para `RESIDENTE`; `inicioContrato` y `venceContrato` para `ADMINISTRADOR` y `VIGILANTE`.
+`Usuario` trae `correoVerificado` (`false` = falta confirmar el código; la cuenta no se puede activar).
 
 ### 4.4 Zonas comunes - `/api/admin/zonas-comunes` (todos **ADMIN**)
 | Método | Ruta | Cuerpo | Respuesta |
@@ -355,7 +374,7 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 
 | Rol | Rutas |
 |---|---|
-| Público | `/api/auth/login`, `/refresh`, `/activar`, `/recuperar-contrasena`, `/api/pasarela/webhook` (firma de Wompi) |
+| Público | `/api/auth/login`, `/refresh`, `/recuperar-contrasena`, `/api/pasarela/webhook` (firma de Wompi) |
 | Autenticado | `/api/auth/logout`, `/contrasena`, `/me`, `/api/notificaciones/**` |
 | ADMINISTRADOR | `/api/admin/**` |
 | RESIDENTE | `/api/residente/**` |
@@ -368,6 +387,15 @@ La protección está en anotaciones sobre cada método, no en reglas por URL. Un
 ## 11. Cambios recientes del contrato
 
 Lo que el front debe tener en cuenta desde la última versión de este documento (11-nov-2026). El resto del contrato no cambió.
+
+### 19-nov-2026 - verificación del correo con código
+| Rol | Endpoint | Para qué | Sección |
+|---|---|---|---|
+| ADMIN | `POST /api/admin/usuarios/{identificacion}/verificar-correo` | Confirma el código de 4 cifras que llegó al correo: verifica el correo y activa la cuenta. | 4.3 |
+| ADMIN | `POST /api/admin/usuarios/{identificacion}/reenviar-codigo` | Envía un código nuevo (reemplaza al anterior). | 4.3 |
+| - | ~~`POST /api/auth/activar`~~ | **Eliminado.** Ya no hay activación pública. | 3 |
+
+`Usuario` trae el campo nuevo `correoVerificado`. `PATCH .../activo` responde 409 si intenta activar una cuenta con el correo sin verificar.
 
 ### 17-nov-2026 - endpoint nuevo
 | Rol | Endpoint | Para qué | Sección |

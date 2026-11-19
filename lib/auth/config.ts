@@ -35,7 +35,6 @@ export const RUTAS_API = {
   login: '/api/auth/login', // Público · { correo, contrasena } -> Sesion
   refresh: '/api/auth/refresh', // Público · { refreshToken } -> Sesion
   logout: '/api/auth/logout', // Autenticado -> 204
-  activar: '/api/auth/activar', // Público · { correo, contrasena } -> { active, mensaje }
   recuperar: '/api/auth/recuperar-contrasena', // Público · { correo } -> 202 { mensaje }
   cambiarContrasena: '/api/auth/contrasena', // Autenticado · PUT { contrasenaActual, contrasenaNueva } -> 204
   me: '/api/auth/me', // Autenticado -> Usuario
@@ -59,7 +58,9 @@ export const RUTAS_API = {
 
   // Administrador · usuarios
   usuarios: '/api/admin/usuarios', // GET ?tipo=&active= -> Usuario[] · POST CrearUsuario -> 201 Usuario
-  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna
+  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna (409 si el correo no está verificado)
+  verificarCorreo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/verificar-correo`, // POST { codigo } -> Usuario (activa)
+  reenviarCodigo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/reenviar-codigo`, // POST -> 202 { mensaje }
 
   // Administrador · zonas comunes y reglas
   zonasComunes: '/api/admin/zonas-comunes', // GET -> Zona[] · POST CrearZona

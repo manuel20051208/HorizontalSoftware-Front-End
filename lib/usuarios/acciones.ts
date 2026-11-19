@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { llamarApi, type Resultado } from '@/lib/auth/api'
+import type { Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
 import { esTipoCuenta, hoyBogota, type TipoCuenta, type Usuario } from './tipos'
@@ -38,6 +38,7 @@ export type EstadoCrear =
     }
   | {
       estado: 'creada'
+      identificacion: number
       nombre: string
       correo: string
       contrasena: string
@@ -125,20 +126,14 @@ export async function crearCuenta(_previo: EstadoCrear, datos: FormData): Promis
   })
   if (!r.ok) return { estado: 'error', ...errorDelBackend(r), valores }
 
-  // El backend crea la cuenta inactiva. Como la administración acaba de ponerle la contraseña,
-  // la activa de una vez con /api/auth/activar (no alterna como el PATCH: si ya estaba activa, la deja así).
-  // Sirve para todos los tipos, también para administradores.
-  let activa = r.datos?.active === true
-  if (!activa) {
-    const a = await llamarApi<{ active: boolean }>(RUTAS_API.activar, {
-      body: { correo: valores.correoElectronico, contrasena: valores.contrasena },
-    })
-    activa = a.ok && a.datos?.active === true
-  }
+  // El backend crea la cuenta inactiva y envía un código de 4 cifras al correo. La cuenta solo se activa
+  // cuando la administración confirma ese código (verificarCorreo), desde la tarjeta de éxito o la lista.
+  const activa = r.datos?.active === true
 
   revalidatePath('/admin/usuarios')
   return {
     estado: 'creada',
+    identificacion: Number(valores.identificacion),
     nombre: valores.nombreCompleto!,
     correo: valores.correoElectronico!.toLowerCase(),
     contrasena: valores.contrasena!,
@@ -155,8 +150,51 @@ export async function alternarActivo(identificacion: number, _previo: EstadoActi
   if (!r.ok) {
     if (r.status === 0) return { error: 'Sin conexión con el servidor.' }
     if (r.status === 403) return { error: 'Esta cuenta no se puede cambiar desde aquí.' }
+    if (r.status === 409) return { error: 'Primero verifica el correo con el código que le llegó.' }
     return { error: 'No se pudo cambiar. Intenta de nuevo.' }
   }
   revalidatePath('/admin/usuarios')
   return undefined
+}
+
+export type EstadoVerificacion =
+  | { estado: 'verificada'; mensaje: string }
+  | { estado: 'error'; mensaje: string }
+  | { estado: 'reenviado'; mensaje: string }
+  | undefined
+
+const SIN_CONEXION = 'No pudimos conectar con el servidor. Intenta de nuevo en un momento.'
+
+/**
+ * Confirma el código de 4 cifras que llegó al correo del usuario (se lo dicta a la administración). Con el
+ * código correcto el correo queda verificado y la cuenta activa. Los mensajes del back se muestran tal cual:
+ * intentos que quedan, código vencido o agotado.
+ */
+export async function verificarCorreo(
+  identificacion: number,
+  _previo: EstadoVerificacion,
+  datos: FormData,
+): Promise<EstadoVerificacion> {
+  const codigo = String(datos.get('codigo') ?? '').trim()
+  if (!/^[0-9]{4}$/.test(codigo)) return { estado: 'error', mensaje: 'El código tiene 4 cifras.' }
+
+  const r = await apiConSesion<Usuario>('admin', RUTAS_API.verificarCorreo(identificacion), { body: { codigo } })
+  if (!r.ok) {
+    if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
+    if (r.status === 403) return { estado: 'error', mensaje: 'Esta cuenta no tiene correo que verificar.' }
+    return { estado: 'error', mensaje: r.errores?.codigo ?? (r.mensaje || 'No se pudo verificar el correo.') }
+  }
+  revalidatePath('/admin/usuarios')
+  return { estado: 'verificada', mensaje: 'Correo verificado: la cuenta quedó activa y ya puede ingresar.' }
+}
+
+/** Envía un código nuevo al correo de la cuenta; reemplaza al anterior y reinicia los intentos. */
+export async function reenviarCodigo(identificacion: number, _previo: EstadoVerificacion): Promise<EstadoVerificacion> {
+  const r = await apiConSesion<{ mensaje: string }>('admin', RUTAS_API.reenviarCodigo(identificacion), {})
+  if (!r.ok) {
+    if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
+    if (r.status === 403) return { estado: 'error', mensaje: 'Esta cuenta no tiene correo que verificar.' }
+    return { estado: 'error', mensaje: r.mensaje || 'No se pudo reenviar el código.' }
+  }
+  return { estado: 'reenviado', mensaje: 'Se envió un código nuevo. El anterior ya no sirve.' }
 }
