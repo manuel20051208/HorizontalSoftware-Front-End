@@ -14,7 +14,13 @@ import {
 import Link from 'next/link'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { Chip } from '@/components/ui/chip'
-import { type CampoCuenta, crearCuenta, type EstadoCrear } from '@/lib/usuarios/acciones'
+import {
+  activarConCodigo,
+  type CampoCuenta,
+  crearCuenta,
+  type EstadoCrear,
+  reenviarCodigo,
+} from '@/lib/usuarios/acciones'
 import { type Inmueble, TIPOS_CUENTA, type TipoCuenta } from '@/lib/usuarios/tipos'
 import styles from './usuarios.module.css'
 
@@ -321,6 +327,87 @@ function MensajeCampo({ nombre, error, ayuda }: { nombre: CampoCuenta; error?: s
   return null
 }
 
+/**
+ * Activación desde el panel: el back envió un código de 4 cifras al correo del usuario. El admin lo
+ * escribe aquí y la cuenta se activa con el correo y la contraseña que puso al crearla, que siguen en
+ * el estado del formulario (no se vuelven a pedir).
+ */
+function ActivacionConCodigo({ correo, contrasena }: { correo: string; contrasena: string }) {
+  const [activacion, activar, activando] = useActionState(activarConCodigo, undefined)
+  const [reenvio, reenviar, reenviando] = useActionState(reenviarCodigo, undefined)
+
+  if (activacion?.estado === 'activa') {
+    return (
+      <p className={styles.activada} role="status">
+        <Check aria-hidden="true" />
+        {activacion.mensaje}
+      </p>
+    )
+  }
+
+  return (
+    <form action={activar} className={styles.activarCodigo}>
+      <p className={styles.activacion}>
+        Se envió un código de activación a <strong>{correo}</strong>. Pídeselo y escríbelo aquí para activar la
+        cuenta. Vence en 7 días y admite 5 intentos.
+      </p>
+      <input type="hidden" name="correo" value={correo} />
+      <input type="hidden" name="contrasena" value={contrasena} />
+
+      <div className={styles.activarFila}>
+        <div className={styles.grupo}>
+          <label htmlFor="codigo-activacion" className={styles.etiqueta}>
+            Código de verificación
+          </label>
+          <input
+            id="codigo-activacion"
+            name="codigo"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]{4}"
+            minLength={4}
+            maxLength={4}
+            required
+            placeholder="0000"
+            className={`${styles.entrada} ${styles.codigo}`}
+            aria-invalid={activacion?.estado === 'error' ? true : undefined}
+            aria-describedby={activacion?.estado === 'error' ? 'error-activacion' : undefined}
+          />
+        </div>
+        <button type="submit" className="btn" data-variant="primary" disabled={activando}>
+          <ShieldCheck aria-hidden="true" />
+          {activando ? 'Activando…' : 'Activar cuenta'}
+        </button>
+        {/* Solo necesita el correo: no valida el código */}
+        <button
+          type="submit"
+          formAction={reenviar}
+          formNoValidate
+          className="btn"
+          data-variant="secondary"
+          disabled={reenviando}
+        >
+          <RefreshCw aria-hidden="true" />
+          {reenviando ? 'Enviando…' : 'Reenviar código'}
+        </button>
+      </div>
+
+      {activacion?.estado === 'error' && (
+        <p id="error-activacion" className={styles.errorCampo} role="alert">
+          <CircleAlert aria-hidden="true" />
+          {activacion.mensaje}
+        </p>
+      )}
+      {reenvio && (
+        <p className={reenvio.estado === 'error' ? styles.errorCampo : styles.ayudaCampo} role="status">
+          {reenvio.mensaje}
+        </p>
+      )}
+    </form>
+  )
+}
+
 function CuentaCreada({
   cuenta,
   onOtra,
@@ -335,9 +422,7 @@ function CuentaCreada({
   useEffect(() => ref.current?.focus(), [])
 
   function copiar() {
-    const texto =
-      `Torres del Parque · módulo ${modulo}\nCorreo: ${cuenta.correo}\nContraseña: ${cuenta.contrasena}` +
-      (cuenta.activa ? '' : `\nActiva tu cuenta en ${window.location.origin}/activar con el código que te llegó al correo.`)
+    const texto = `Torres del Parque · módulo ${modulo}\nCorreo: ${cuenta.correo}\nContraseña: ${cuenta.contrasena}`
     navigator.clipboard
       ?.writeText(texto)
       .then(() => setCopiado(true))
@@ -365,16 +450,11 @@ function CuentaCreada({
         </div>
       </dl>
 
-      <p className={styles.activacion}>
-        {cuenta.activa ? (
-          'La cuenta ya está activa: puede ingresar ahora.'
-        ) : (
-          <>
-            Se envió un código de activación a <strong>{cuenta.correo}</strong>. Con ese código, el correo y la
-            contraseña inicial, la persona activa su cuenta en <strong>/activar</strong> (el código vence en 7 días).
-          </>
-        )}
-      </p>
+      {cuenta.activa ? (
+        <p className={styles.activacion}>La cuenta ya está activa: puede ingresar ahora.</p>
+      ) : (
+        <ActivacionConCodigo correo={cuenta.correo} contrasena={cuenta.contrasena} />
+      )}
 
       <div className={styles.exitoAcciones}>
         <button type="button" className="btn" data-variant="secondary" onClick={copiar}>

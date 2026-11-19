@@ -108,10 +108,10 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 
 **Contraseña nueva:** mínimo 8 caracteres, con al menos una letra y un número.
 
-**Activación con código de verificación.** Al crear una cuenta (`POST /api/admin/usuarios`, salvo un `USUARIO_AUTORIZADO`) el back envía al correo del usuario un código de **4 cifras**. La persona activa su cuenta con `POST /api/auth/activar` enviando su correo, la contraseña inicial y ese código (en el front: pantalla pública `/activar`).
+**Activación con código de verificación.** Al crear una cuenta (`POST /api/admin/usuarios`, salvo un `USUARIO_AUTORIZADO`) el back envía al correo del usuario un código de **4 cifras**. La cuenta se activa con `POST /api/auth/activar` enviando el correo, la contraseña inicial y ese código. **En el front lo hace solo el panel del administrador**: después de crear la cuenta, la tarjeta de éxito pide el código (el usuario se lo dicta al admin) y la activa con el correo y la contraseña que el admin acaba de escribir. No hay ninguna pantalla pública de activación; los endpoints siguen siendo públicos en el back.
 - El código se guarda cifrado, **vence a los 7 días** (igual que la ventana de activación) y admite **máximo 5 intentos fallidos**; después hay que pedir otro.
 - `POST /api/auth/reenviar-codigo` responde siempre 202 `{"mensaje": "Si la cuenta existe y esta pendiente de activar, recibira un codigo nuevo"}`. El código nuevo **reemplaza** al anterior y **reinicia** los intentos.
-- Errores de `/activar` (el front muestra el `mensaje` del back tal cual):
+- Errores de `/activar` (el panel muestra el `mensaje` del back tal cual):
 
 | Código | Cuándo |
 |---|---|

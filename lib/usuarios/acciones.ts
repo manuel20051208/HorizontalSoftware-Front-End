@@ -1,9 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import type { Resultado } from '@/lib/auth/api'
+import { llamarApi, type Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
-import { apiConSesion } from '@/lib/auth/sesion'
+import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 import { esTipoCuenta, hoyBogota, type TipoCuenta, type Usuario } from './tipos'
 
 export type CampoCuenta =
@@ -125,8 +125,9 @@ export async function crearCuenta(_previo: EstadoCrear, datos: FormData): Promis
   })
   if (!r.ok) return { estado: 'error', ...errorDelBackend(r), valores }
 
-  // El backend crea la cuenta inactiva y envía un código de 4 cifras a su correo. La persona la
-  // activa en /activar con su correo, la contraseña inicial y ese código (vence en 7 días).
+  // El backend crea la cuenta inactiva y envía un código de 4 cifras a su correo. La administración
+  // la activa desde la tarjeta de éxito con ese código (activarConCodigo); la contraseña se queda en
+  // el estado del formulario hasta entonces.
   const activa = r.datos?.active === true
 
   revalidatePath('/admin/usuarios')
@@ -152,4 +153,50 @@ export async function alternarActivo(identificacion: number, _previo: EstadoActi
   }
   revalidatePath('/admin/usuarios')
   return undefined
+}
+
+export type EstadoActivacion =
+  | { estado: 'activa'; mensaje: string }
+  | { estado: 'error'; mensaje: string }
+  | { estado: 'reenviado'; mensaje: string }
+  | undefined
+
+const SIN_CONEXION = 'No pudimos conectar con el servidor. Intenta de nuevo en un momento.'
+
+/**
+ * Solo administración: activa la cuenta recién creada con el código de 4 cifras que el back envió al
+ * correo del usuario. Llama al endpoint público /api/auth/activar con el correo y la contraseña que el
+ * admin escribió al crearla. Los errores del back se muestran tal cual (intentos restantes, código
+ * vencido, plazo vencido): por eso no pasa por errorDeApi, cuyo 401 diría «tu sesión venció».
+ */
+export async function activarConCodigo(_previo: EstadoActivacion, datos: FormData): Promise<EstadoActivacion> {
+  await requerirSesion('admin')
+  const correo = String(datos.get('correo') ?? '').trim()
+  const contrasena = String(datos.get('contrasena') ?? '')
+  const codigo = String(datos.get('codigo') ?? '').trim()
+  if (!correo || !contrasena) return { estado: 'error', mensaje: 'Faltan el correo o la contraseña de la cuenta.' }
+  if (!/^[0-9]{4}$/.test(codigo)) return { estado: 'error', mensaje: 'El código tiene 4 cifras.' }
+
+  const r = await llamarApi<{ active: boolean; mensaje?: string }>(RUTAS_API.activar, {
+    body: { correo, contrasena, codigo },
+  })
+  if (!r.ok) {
+    if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
+    return { estado: 'error', mensaje: r.mensaje || 'No se pudo activar la cuenta.' }
+  }
+  revalidatePath('/admin/usuarios')
+  return { estado: 'activa', mensaje: 'La cuenta quedó activa: ya puede ingresar.' }
+}
+
+/** Solo administración: pide un código nuevo para la cuenta (reemplaza al anterior y reinicia los intentos). */
+export async function reenviarCodigo(_previo: EstadoActivacion, datos: FormData): Promise<EstadoActivacion> {
+  await requerirSesion('admin')
+  const correo = String(datos.get('correo') ?? '').trim()
+  if (!correo) return { estado: 'error', mensaje: 'Falta el correo de la cuenta.' }
+  const r = await llamarApi<{ mensaje: string }>(RUTAS_API.reenviarCodigo, { body: { correo } })
+  if (!r.ok) {
+    if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
+    return { estado: 'error', mensaje: r.mensaje || 'No se pudo reenviar el código.' }
+  }
+  return { estado: 'reenviado', mensaje: `Se envió un código nuevo a ${correo}. El anterior ya no sirve.` }
 }
