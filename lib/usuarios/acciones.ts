@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
+import { errorDeApi, exito, texto, type EstadoAccion } from '@/lib/api/acciones'
 import { esTipoCuenta, hoyBogota, type TipoCuenta, type UsuarioInmuebles, type Usuario } from './tipos'
 
 export type CampoCuenta =
@@ -293,4 +294,54 @@ export async function quitarInmueble(
   if (!r.ok) return errorRelacion(r, 'No se pudo quitar del apartamento. Intenta de nuevo.')
   refrescarRelacion()
   return { estado: 'ok', mensaje: 'Se quitó del apartamento.' }
+}
+
+// ---------- Editar y eliminar cuentas ----------
+
+/**
+ * Datos personales y de contrato. Cambiar el correo deja la cuenta inactiva y sin sesión hasta que se verifique
+ * el código nuevo que el back envía al correo.
+ */
+export async function actualizarCuenta(
+  identificacion: number,
+  tipoUsuario: string,
+  _previo: EstadoAccion,
+  datos: FormData,
+): Promise<EstadoAccion> {
+  const nombreCompleto = texto(datos, 'nombreCompleto')
+  const correoElectronico = texto(datos, 'correoElectronico')
+  if (!nombreCompleto || !correoElectronico) {
+    return { estado: 'error', mensaje: 'Escribe el nombre y el correo.' }
+  }
+  const conContrato = tipoUsuario === 'ADMINISTRADOR' || tipoUsuario === 'VIGILANTE'
+  const inicioContrato = texto(datos, 'inicioContrato') || null
+  const venceContrato = texto(datos, 'venceContrato') || null
+  if (conContrato && (!inicioContrato || !venceContrato)) {
+    return { estado: 'error', mensaje: 'Indica el inicio y el vencimiento del contrato.' }
+  }
+  const r = await apiConSesion('admin', RUTAS_API.usuario(identificacion), {
+    metodo: 'PUT',
+    body: {
+      nombreCompleto,
+      correoElectronico,
+      fechaNacimiento: texto(datos, 'fechaNacimiento') || null,
+      inicioContrato: conContrato ? inicioContrato : null,
+      venceContrato: conContrato ? venceContrato : null,
+      venceAutorizacion: texto(datos, 'venceAutorizacion') || null,
+    },
+  })
+  if (!r.ok) return errorDeApi(r, 'No se pudo actualizar la cuenta.')
+  revalidatePath('/admin/usuarios')
+  revalidatePath('/admin/inmuebles/[id]', 'page')
+  return exito('Cuenta actualizada.')
+}
+
+/** Borra la cuenta con su auto y sus reservas; sus invitados, notificaciones e inmuebles siguen existiendo. */
+export async function eliminarCuenta(identificacion: number, _previo: EstadoAccion): Promise<EstadoAccion> {
+  const r = await apiConSesion('admin', RUTAS_API.usuario(identificacion), { metodo: 'DELETE' })
+  if (!r.ok) return errorDeApi(r, 'No se pudo eliminar la cuenta.')
+  revalidatePath('/admin/usuarios')
+  revalidatePath('/admin/inmuebles')
+  revalidatePath('/admin/inmuebles/[id]', 'page')
+  return exito('Cuenta eliminada.')
 }

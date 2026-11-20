@@ -60,6 +60,12 @@
   overflow-x: auto;
 }
 
+/* overflow-x: auto también recorta en vertical: con un panel de editar/eliminar abierto en una fila, la tabla
+   lo deja salir en vez de recortarlo con scroll interno */
+.tablaMarco:has(details[open]) {
+  overflow: visible;
+}
+
 .tabla {
   width: 100%;
   border-collapse: collapse;

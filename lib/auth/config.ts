@@ -46,10 +46,11 @@ export const RUTAS_API = {
   liquidacionesMasiva: '/api/admin/liquidaciones/masiva', // POST { periodo, fechaLimite? }
   liquidacionMora: (id: number) => `/api/admin/liquidaciones/${id}/mora`, // PATCH
   liquidacionAlDia: (id: number) => `/api/admin/liquidaciones/${id}/al-dia`, // PATCH
+  liquidacion: (id: number) => `/api/admin/liquidaciones/${id}`, // GET · PUT { fechaLimite, cuota, servicios, multas } · DELETE (409 si AL_DIA)
 
   // Administrador · inmuebles
   inmuebles: '/api/admin/inmuebles', // GET -> Resumen[] · POST CrearInmueble
-  inmueble: (id: number) => `/api/admin/inmuebles/${id}`, // GET -> Detalle
+  inmueble: (id: number) => `/api/admin/inmuebles/${id}`, // GET -> Detalle · PUT { direccionInmueble, isActive } · DELETE (409 con reservas)
   tarifas: (id: number) => `/api/admin/inmuebles/${id}/tarifas`, // PUT
   multas: (id: number) => `/api/admin/inmuebles/${id}/multas`, // PUT
   zonasDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/zonas-comunes`, // PUT
@@ -63,25 +64,32 @@ export const RUTAS_API = {
   verificarCorreo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/verificar-correo`, // POST { codigo } -> Usuario (activa)
   reenviarCodigo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/reenviar-codigo`, // POST -> 202 { mensaje }
   inmueblesDeUsuario: (identificacion: number) => `/api/admin/usuarios/${identificacion}/inmuebles`, // GET · POST { inmuebleId } -> UsuarioInmuebles
+  usuario: (identificacion: number) => `/api/admin/usuarios/${identificacion}`, // GET · PUT ActualizarUsuario · DELETE
   inmuebleDeUsuario: (identificacion: number, inmuebleId: number) =>
     `/api/admin/usuarios/${identificacion}/inmuebles/${inmuebleId}`, // PUT { inmuebleId } (mudanza) -> UsuarioInmuebles · DELETE -> 204
 
   // Administrador · zonas comunes y reglas
   zonasComunes: '/api/admin/zonas-comunes', // GET -> Zona[] · POST CrearZona
   zonaEstado: (id: number) => `/api/admin/zonas-comunes/${id}/estado`, // PATCH, alterna
+  zona: (id: number) => `/api/admin/zonas-comunes/${id}`, // GET · PUT · DELETE (409 con reservas o reglas)
   reglas: '/api/admin/reglas-reserva', // GET -> Regla[] · POST CrearRegla
-  regla: (id: number) => `/api/admin/reglas-reserva/${id}`, // PUT
+  regla: (id: number) => `/api/admin/reglas-reserva/${id}`, // GET · PUT · DELETE (409 si sigue aplicada)
+  zonasDeRegla: (id: number) => `/api/admin/reglas-reserva/${id}/zonas`, // POST { zonaComunId, observaciones? } -> Rompimiento
+  rompimiento: (id: number) => `/api/admin/rompimientos/${id}`, // GET · DELETE
   rompimientoAplicar: (id: number) => `/api/admin/rompimientos/${id}/aplicar`, // PATCH
   rompimientoInactivar: (id: number) => `/api/admin/rompimientos/${id}/inactivar`, // PATCH
 
   // Administrador · notificaciones, pagos y pasarela
   notificacionesAdmin: '/api/admin/notificaciones', // POST Enviar -> Notificacion
   notificacionLectura: (id: number) => `/api/admin/notificaciones/${id}/lectura`, // GET
+  notificacionAdmin: (id: number) => `/api/admin/notificaciones/${id}`, // GET · DELETE
   incidencias: '/api/admin/notificaciones/incidencias', // GET ?pagina=&tamano= -> Pagina<Notificacion>
   pagosAdmin: '/api/admin/pagos', // GET ?inmuebleId=&estado= -> Pago[]
   pagoAnular: (id: number) => `/api/admin/pagos/${id}/anular`, // POST
   pagoReembolso: (id: number) => `/api/admin/pagos/${id}/reembolso`, // POST
   pasarela: '/api/admin/pasarela', // GET · PUT
+  parqueaderos: '/api/admin/parqueaderos', // GET ?pagina=&tamano= -> Pagina<Parqueadero> · POST { inmuebleId, valorMensual }
+  parqueadero: (id: number) => `/api/admin/parqueaderos/${id}`, // GET · PUT { valorMensual } · DELETE
 
   // Residente · cuenta y pagos. Todas las rutas /api/residente/** y /api/pagos/** del residente llevan
   // ?inmuebleId= del apartamento elegido: lo agrega apiConSesion (lib/auth/sesion.ts).
@@ -93,12 +101,13 @@ export const RUTAS_API = {
   invitados: '/api/residente/invitados', // GET · POST CrearInvitado
   invitadoEstado: (id: number) => `/api/residente/invitados/${id}/estado`, // PATCH, alterna
   invitadosEstado: '/api/residente/invitados/estado', // PATCH { invitadoIds }
-  auto: '/api/residente/auto', // GET · POST { placa, parqueaderoId? }
+  invitado: (id: number) => `/api/residente/invitados/${id}`, // GET · PUT { nombreCompleto, fechaNacimiento?, venceAutorizacion? } · DELETE (quita la autorización)
+  auto: '/api/residente/auto', // GET · POST { placa, parqueaderoId? } · PUT { placa, parqueaderoId? } · DELETE
   zonasResidente: '/api/residente/zonas-comunes', // GET -> Zona[]
   disponibilidad: (id: number, inicio: string, fin: string) =>
     `/api/residente/zonas-comunes/${id}/disponibilidad?${new URLSearchParams({ inicio, fin })}`, // GET · yyyy-MM-ddTHH:mm
   reservas: '/api/residente/reservas', // GET ?estado=&pagina=&tamano= · POST { zonaComunId, fechaHoraInicio, fechaHoraFin }
-  reserva: (id: number) => `/api/residente/reservas/${id}`, // DELETE
+  reserva: (id: number) => `/api/residente/reservas/${id}`, // GET · PUT { fechaHoraInicio, fechaHoraFin } (reprogramar) · DELETE
 
   // Notificaciones del usuario
   notificaciones: '/api/notificaciones', // GET -> Notificacion[]

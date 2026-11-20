@@ -130,3 +130,62 @@ export async function cancelarReserva(id: number): Promise<EstadoAccion> {
   refrescarResidente()
   return exito('Reserva cancelada.')
 }
+
+// ---------- Editar y eliminar (auto, invitados y reservas) ----------
+
+/** Cambia la placa y el parqueadero del auto ya registrado (POST solo sirve para el primero). */
+export async function actualizarAuto(_previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
+  const placa = numero(datos, 'placa')
+  if (!placa || placa <= 0) return { estado: 'error', mensaje: 'Escribe la placa numérica del auto.' }
+  const r = await apiConSesion('residente', RUTAS_API.auto, {
+    metodo: 'PUT',
+    body: { placa, parqueaderoId: numero(datos, 'parqueaderoId') ?? null },
+  })
+  if (!r.ok) return errorDeApi(r, 'No se pudo actualizar el auto.')
+  refrescarResidente()
+  return exito('Auto actualizado.')
+}
+
+export async function eliminarAuto(): Promise<EstadoAccion> {
+  const r = await apiConSesion('residente', RUTAS_API.auto, { metodo: 'DELETE' })
+  if (!r.ok) return errorDeApi(r, 'No se pudo eliminar el auto.')
+  refrescarResidente()
+  return exito('Auto eliminado.')
+}
+
+export async function actualizarInvitado(id: number, _previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
+  const nombreCompleto = texto(datos, 'nombreCompleto')
+  if (!nombreCompleto) return { estado: 'error', mensaje: 'Escribe el nombre del invitado.' }
+  const r = await apiConSesion('residente', RUTAS_API.invitado(id), {
+    metodo: 'PUT',
+    body: {
+      nombreCompleto,
+      fechaNacimiento: texto(datos, 'fechaNacimiento') || null,
+      venceAutorizacion: texto(datos, 'venceAutorizacion') || null,
+    },
+  })
+  if (!r.ok) return errorDeApi(r, 'No se pudo actualizar el invitado.')
+  refrescarResidente()
+  return exito('Invitado actualizado.')
+}
+
+/** Quita la autorización del residente: el invitado sigue existiendo para los demás que lo autorizaron. */
+export async function eliminarInvitado(id: number): Promise<EstadoAccion> {
+  const r = await apiConSesion('residente', RUTAS_API.invitado(id), { metodo: 'DELETE' })
+  if (!r.ok) return errorDeApi(r, 'No se pudo quitar el invitado.')
+  refrescarResidente()
+  return exito('Invitado quitado.')
+}
+
+/** Nuevo día y horario de una reserva que aún no empieza; el back aplica las mismas reglas que al reservar. */
+export async function reprogramarReserva(id: number, _previo: EstadoAccion, datos: FormData): Promise<EstadoAccion> {
+  const intervalo = intervaloReserva(texto(datos, 'fecha'), texto(datos, 'inicio'), texto(datos, 'fin'))
+  if (!intervalo) return { estado: 'error', mensaje: 'Elige el día y las horas de inicio y fin.' }
+  const r = await apiConSesion('residente', RUTAS_API.reserva(id), {
+    metodo: 'PUT',
+    body: { fechaHoraInicio: intervalo.inicio, fechaHoraFin: intervalo.fin },
+  })
+  if (!r.ok) return errorDeApi(r, 'No se pudo reprogramar la reserva.')
+  refrescarResidente()
+  return exito('Reserva reprogramada.')
+}

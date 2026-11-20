@@ -2,6 +2,7 @@ import { Bell, Send, TriangleAlert } from 'lucide-react'
 import type { Metadata } from 'next'
 import { FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo, CampoArea, CampoSelect } from '@/components/gestion/campos'
+import { Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Paginacion, Panel, Vacio } from '@/components/gestion/piezas'
 import { PanelPreferencias } from '@/components/gestion/preferencias'
 import styles from '@/components/gestion/gestion.module.css'
@@ -14,16 +15,25 @@ import {
   type Notificacion,
   type Preferencias,
 } from '@/lib/api/tipos'
-import { enviarNotificacion } from '@/lib/admin/acciones'
+import { eliminarNotificacion, enviarNotificacion } from '@/lib/admin/acciones'
 import { consultaPagina, leerPagina, listaDe, listado, paginaDeUrl, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
 export const metadata: Metadata = { title: 'Comunicados' }
 
-type Props = { searchParams: Promise<{ notificacion?: string; pagina?: string }> }
+type Props = { searchParams: Promise<{ notificacion?: string; pagina?: string; todas?: string }> }
 
 const INCIDENCIAS_POR_PAGINA = 10
+const TODAS_POR_PAGINA = 10
+
+/** Página del listado general de notificaciones, sin perder la consulta de lectura. */
+function enlaceTodas(notificacionId: number, pagina: number) {
+  const q = new URLSearchParams()
+  if (notificacionId > 0) q.set('notificacion', String(notificacionId))
+  if (pagina > 1) q.set('todas', String(pagina))
+  return `${q.size ? `/admin/notificaciones?${q}` : '/admin/notificaciones'}#todas`
+}
 
 function enlaceIncidencias(notificacionId: number, pagina: number) {
   const q = new URLSearchParams()
@@ -48,8 +58,9 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
   const params = await searchParams
   const notificacionId = Number(params.notificacion)
   const paginaIncidencias = paginaDeUrl(params.pagina)
+  const paginaTodas = paginaDeUrl(params.todas)
 
-  const [inmueblesR, propiasR, lecturaR, incidenciasR, preferenciasR] = await Promise.all([
+  const [inmueblesR, propiasR, lecturaR, incidenciasR, preferenciasR, todasR] = await Promise.all([
     apiConSesion<Listado<InmuebleResumen>>('admin', listado(RUTAS_API.inmuebles), { metodo: 'GET' }),
     apiConSesion<Listado<Notificacion>>('admin', listado(RUTAS_API.notificaciones), { metodo: 'GET' }),
     notificacionId > 0
@@ -63,11 +74,17 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
       { metodo: 'GET' },
     ),
     apiConSesion<Preferencias>('admin', RUTAS_API.preferencias, { metodo: 'GET' }),
+    apiConSesion<Listado<Notificacion>>(
+      'admin',
+      `${RUTAS_API.notificacionesAdmin}?${consultaPagina(paginaTodas, TODAS_POR_PAGINA)}`,
+      { metodo: 'GET' },
+    ),
   ])
 
   const inmuebles = listaDe(inmueblesR)
   const propias = listaDe(propiasR)
   const incidencias = leerPagina(incidenciasR, paginaIncidencias, INCIDENCIAS_POR_PAGINA, (a, b) => b.id - a.id)
+  const todas = leerPagina(todasR, paginaTodas, TODAS_POR_PAGINA, (a, b) => b.id - a.id)
 
   return (
     <div className={styles.pagina}>
@@ -173,6 +190,60 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
       </div>
 
       <Panel
+        titulo="Todas las notificaciones"
+        id="todas"
+        nota={
+          todasR.ok
+            ? `${todas.total} ${todas.total === 1 ? 'notificación enviada' : 'notificaciones enviadas'} en el conjunto, las más recientes primero.`
+            : 'Comunicados, recordatorios y avisos automáticos del conjunto.'
+        }
+      >
+        {!todasR.ok ? (
+          <EstadoResultado resultado={todasR} porDefecto="No se pudieron cargar las notificaciones." />
+        ) : todas.items.length === 0 ? (
+          <Vacio>Todavía no se ha enviado ninguna notificación.</Vacio>
+        ) : (
+          <>
+            <ul className={styles.fichas}>
+              {todas.items.map((n) => (
+                <li key={n.id} className={styles.consulta}>
+                  <div className={styles.panelCabecera} style={{ marginBottom: 0 }}>
+                    <p className={styles.etiqueta}>
+                      <Bell aria-hidden="true" style={{ display: 'inline', width: '1rem', height: '1rem' }} />{' '}
+                      {textoTipoNotificacion(n.tipoNotificacion)} · N.º {n.id}
+                    </p>
+                    <div className={styles.accionesCabecera}>
+                      <p className="t-nota">{fechaHora(n.fechaEnvio)}</p>
+                      <a
+                        href={`/admin/notificaciones?notificacion=${n.id}`}
+                        className="btn"
+                        data-variant="quiet"
+                        data-size="sm"
+                      >
+                        Ver lectura
+                      </a>
+                      <Eliminar
+                        titulo={`Eliminar la notificación N.º ${n.id}`}
+                        accion={eliminarNotificacion.bind(null, n.id)}
+                        efectos="Desaparece de la bandeja de todos sus destinatarios. Los usuarios e inmuebles siguen existiendo."
+                      />
+                    </div>
+                  </div>
+                  <p>{n.mensaje}</p>
+                </li>
+              ))}
+            </ul>
+            <Paginacion
+              pagina={todas.pagina}
+              totalPaginas={todas.totalPaginas}
+              href={(n) => enlaceTodas(notificacionId, n)}
+              etiqueta="Páginas de notificaciones"
+            />
+          </>
+        )}
+      </Panel>
+
+      <Panel
         titulo="Incidencias de portería"
         id="incidencias"
         nota={
@@ -197,9 +268,16 @@ export default async function NotificacionesAdminPage({ searchParams }: Props) {
                       {fechaHora(n.fechaEnvio)}
                     </p>
                   </div>
-                  <span className="chip" data-tone="alert">
-                    Incidencia
-                  </span>
+                  <div className={styles.accionesCabecera}>
+                    <span className="chip" data-tone="alert">
+                      Incidencia
+                    </span>
+                    <Eliminar
+                      titulo="Eliminar la incidencia"
+                      accion={eliminarNotificacion.bind(null, n.id)}
+                      efectos="La incidencia se borra para todos los administradores."
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

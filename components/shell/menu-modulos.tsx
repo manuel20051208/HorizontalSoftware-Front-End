@@ -64,6 +64,7 @@ const MENUS: Record<'admin' | 'residente', Menu> = {
         opciones: [
           { texto: 'Usuarios', nota: 'Cuentas y su estado', icono: Users, href: '/admin/usuarios' },
           { texto: 'Inmuebles', nota: 'Apartamentos y su cartera', icono: Building2, href: '/admin/inmuebles' },
+          { texto: 'Parqueaderos', nota: 'Un parqueadero por inmueble', icono: Car, href: '/admin/parqueaderos' },
         ],
       },
     ],

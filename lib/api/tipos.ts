@@ -235,6 +235,8 @@ export type Invitado = {
   vigente: boolean
   /** Apartamentos del invitado (puede estar en varios), por dirección. */
   inmuebles?: { id: number; direccionInmueble: string }[] | null
+  /** Para prellenar «Editar». */
+  fechaNacimiento?: string | null
 }
 
 export type Anfitrion = {
@@ -253,6 +255,13 @@ export type Auto = {
   parqueaderoId: number | null
   inmuebleId: number
   direccionInmueble: string
+}
+
+/** ParqueaderoResponses.Parqueadero: a lo sumo uno por inmueble. */
+export type Parqueadero = {
+  id: number
+  inmuebleId: number
+  valorMensual: number
 }
 
 export type Dueno = Anfitrion

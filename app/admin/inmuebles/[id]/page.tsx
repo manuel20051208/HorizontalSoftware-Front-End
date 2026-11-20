@@ -3,7 +3,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
-import { Campo, CampoSelect } from '@/components/gestion/campos'
+import { Campo, CampoCheck, CampoSelect } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
@@ -23,8 +24,10 @@ import {
 } from '@/components/modules/usuarios/relacion-inmueble'
 import { INVITADO, type Usuario, type UsuarioDeInmueble } from '@/lib/usuarios/tipos'
 import {
+  actualizarInmueble,
   asignarZonas,
   conciliarPago,
+  eliminarInmueble,
   enviarRecordatorio,
   guardarMultas,
   guardarTarifas,
@@ -119,6 +122,29 @@ export default async function InmueblePage({ params }: Props) {
             >
               Ver liquidaciones
             </Link>
+            <Editar titulo={`Editar ${inmueble.direccionInmueble}`} accion={actualizarInmueble.bind(null, inmuebleId)}>
+              <Campo
+                prefijo="inmueble"
+                nombre="direccionInmueble"
+                etiqueta="Dirección"
+                maxLength={100}
+                valor={inmueble.direccionInmueble}
+                requerido
+                ayuda="Formato TORRE-APTO, por ejemplo A-302."
+              />
+              <CampoCheck
+                prefijo="inmueble"
+                nombre="isActive"
+                etiqueta="Inmueble activo"
+                marcado={inmueble.isActive !== false}
+                ayuda="Un inmueble inactivo no entra en la liquidación masiva y sus residentes no pueden reservar."
+              />
+            </Editar>
+            <Eliminar
+              titulo={`Eliminar ${inmueble.direccionInmueble}`}
+              accion={eliminarInmueble.bind(null, inmuebleId)}
+              efectos="Se borran con él sus pagos, su parqueadero y sus liquidaciones. Los residentes, zonas comunes y comunicados siguen existiendo; solo pierden el vínculo. No se puede eliminar si tiene reservas: desactívalo."
+            />
           </>
         }
       />

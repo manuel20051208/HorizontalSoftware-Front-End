@@ -2,11 +2,12 @@ import { Check, Clock, UserCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga } from '@/lib/api/acciones'
 import type { Invitado } from '@/lib/api/tipos'
-import { alternarInvitado, crearInvitado } from '@/lib/residente/acciones'
+import { actualizarInvitado, alternarInvitado, crearInvitado, eliminarInvitado } from '@/lib/residente/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -89,13 +90,54 @@ export default async function InvitadosPage() {
                       </span>
                     </td>
                     <td className={styles.celdaAccion}>
-                      <BotonAccion
-                        accion={alternarInvitado.bind(null, i.id)}
-                        variante={i.active ? 'quiet' : 'secondary'}
-                        confirmar={`¿${i.active ? 'Desactivar' : 'Activar'} la autorización de ${i.nombreCompleto}?`}
-                      >
-                        {i.active ? 'Desactivar' : 'Activar'}
-                      </BotonAccion>
+                      <div className={styles.accionesCabecera}>
+                        <BotonAccion
+                          accion={alternarInvitado.bind(null, i.id)}
+                          variante={i.active ? 'quiet' : 'secondary'}
+                          confirmar={`¿${i.active ? 'Desactivar' : 'Activar'} la autorización de ${i.nombreCompleto}?`}
+                        >
+                          {i.active ? 'Desactivar' : 'Activar'}
+                        </BotonAccion>
+                        <Editar
+                          titulo={`Editar a ${i.nombreCompleto}`}
+                          accion={actualizarInvitado.bind(null, i.id)}
+                          ariaLabel={`Editar al invitado ${i.nombreCompleto}`}
+                        >
+                          <Campo
+                            prefijo={`inv-${i.id}`}
+                            nombre="nombreCompleto"
+                            etiqueta="Nombre completo"
+                            maxLength={150}
+                            valor={i.nombreCompleto}
+                            requerido
+                          />
+                          <Campo
+                            prefijo={`inv-${i.id}`}
+                            nombre="fechaNacimiento"
+                            etiqueta="Fecha de nacimiento"
+                            tipo="date"
+                            valor={i.fechaNacimiento ?? ''}
+                            opcional
+                          />
+                          <Campo
+                            prefijo={`inv-${i.id}`}
+                            nombre="venceAutorizacion"
+                            etiqueta="Vence la autorización"
+                            tipo="date"
+                            valor={i.venceAutorizacion ?? ''}
+                            opcional
+                            ayuda="Vacío = autorización permanente."
+                          />
+                        </Editar>
+                        <Eliminar
+                          titulo={`Quitar a ${i.nombreCompleto}`}
+                          boton="Quitar"
+                          textoConfirmar="Sí, quitar"
+                          accion={eliminarInvitado.bind(null, i.id)}
+                          ariaLabel={`Quitar al invitado ${i.nombreCompleto}`}
+                          efectos="Le quitas tu autorización: la portería deja de dejarlo entrar por ti. Si otro residente también lo autorizó, para él sigue igual."
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

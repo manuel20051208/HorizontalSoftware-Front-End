@@ -2,10 +2,11 @@ import { Car } from 'lucide-react'
 import type { Metadata } from 'next'
 import { FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo } from '@/components/gestion/campos'
+import { Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import type { Auto } from '@/lib/api/tipos'
-import { registrarAuto } from '@/lib/residente/acciones'
+import { actualizarAuto, eliminarAuto, registrarAuto } from '@/lib/residente/acciones'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -30,7 +31,17 @@ export default async function AutoPage() {
       {errorReal && <EstadoResultado resultado={errorReal} porDefecto="No se pudo cargar tu auto." />}
 
       {auto && (
-        <Panel titulo="Auto registrado" nota="Datos tal como los ve la portería.">
+        <Panel
+          titulo="Auto registrado"
+          nota="Datos tal como los ve la portería."
+          acciones={
+            <Eliminar
+              titulo="Eliminar el auto"
+              accion={eliminarAuto}
+              efectos="La portería deja de reconocer esta placa y su parqueadero queda libre. Puedes registrar otro auto después."
+            />
+          }
+        >
           <dl className={styles.datos}>
             <div>
               <dt>Placa</dt>
@@ -62,7 +73,7 @@ export default async function AutoPage() {
         nota="La placa es numérica, como figura en el registro del conjunto."
       >
         <FormularioAccion
-          accion={registrarAuto}
+          accion={auto ? actualizarAuto : registrarAuto}
           texto={auto ? 'Actualizar auto' : 'Registrar auto'}
           variante={auto ? 'secondary' : 'primary'}
           className={styles.formularioEstrecho}

@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
 import { listaDe, type Listado } from '@/lib/api/paginacion'
 import type { Resultado } from '@/lib/auth/api'
-import { alternarActivo } from '@/lib/usuarios/acciones'
+import { Campo } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
+import { actualizarCuenta, alternarActivo, eliminarCuenta } from '@/lib/usuarios/acciones'
 import {
   esTipoCuenta,
   type Inmueble,
@@ -188,6 +190,7 @@ export function UsuariosVista({
                       {u.fechaCreacionCuenta ? fecha.format(new Date(`${u.fechaCreacionCuenta}T00:00:00Z`)) : '—'}
                     </td>
                     <td className={styles.cAccion}>
+                      <div className={styles.accionesFila}>
                       {pendiente ? (
                         <VerificarCorreo
                           identificacion={u.identificacion}
@@ -206,6 +209,79 @@ export function UsuariosVista({
                         />
                         )
                       )}
+                      <Editar
+                        titulo={`Editar a ${u.nombreCompleto}`}
+                        accion={actualizarCuenta.bind(null, u.identificacion, tipoU)}
+                        ariaLabel={`Editar la cuenta de ${u.nombreCompleto}`}
+                      >
+                        <Campo
+                          prefijo={`u-${u.id}`}
+                          nombre="nombreCompleto"
+                          etiqueta="Nombre completo"
+                          maxLength={150}
+                          valor={u.nombreCompleto}
+                          requerido
+                        />
+                        <Campo
+                          prefijo={`u-${u.id}`}
+                          nombre="correoElectronico"
+                          etiqueta="Correo"
+                          tipo="email"
+                          valor={u.correoElectronico}
+                          requerido
+                          ayuda={
+                            tipoU === INVITADO.tipo
+                              ? undefined
+                              : 'Si lo cambias, la cuenta queda inactiva hasta verificar el código que llegará al correo nuevo.'
+                          }
+                        />
+                        <Campo
+                          prefijo={`u-${u.id}`}
+                          nombre="fechaNacimiento"
+                          etiqueta="Fecha de nacimiento"
+                          tipo="date"
+                          valor={u.fechaNacimiento ?? ''}
+                          opcional
+                        />
+                        {(tipoU === 'ADMINISTRADOR' || tipoU === 'VIGILANTE') && (
+                          <>
+                            <Campo
+                              prefijo={`u-${u.id}`}
+                              nombre="inicioContrato"
+                              etiqueta="Inicio del contrato"
+                              tipo="date"
+                              valor={u.inicioContrato ?? ''}
+                              requerido
+                            />
+                            <Campo
+                              prefijo={`u-${u.id}`}
+                              nombre="venceContrato"
+                              etiqueta="Vencimiento del contrato"
+                              tipo="date"
+                              valor={u.venceContrato ?? ''}
+                              requerido
+                            />
+                          </>
+                        )}
+                        {tipoU === INVITADO.tipo && (
+                          <Campo
+                            prefijo={`u-${u.id}`}
+                            nombre="venceAutorizacion"
+                            etiqueta="Vence la autorización"
+                            tipo="date"
+                            valor={u.venceAutorizacion ?? ''}
+                            opcional
+                            ayuda="Vacío = autorización permanente."
+                          />
+                        )}
+                      </Editar>
+                      <Eliminar
+                        titulo={`Eliminar a ${u.nombreCompleto}`}
+                        accion={eliminarCuenta.bind(null, u.identificacion)}
+                        ariaLabel={`Eliminar la cuenta de ${u.nombreCompleto}`}
+                        efectos="Se borran con la cuenta su auto y sus reservas. Sus invitados, comunicados e inmuebles siguen existiendo; solo pierden el vínculo. No puedes eliminar tu propia cuenta ni a un administrador que haya creado reglas de reserva."
+                      />
+                      </div>
                     </td>
                   </tr>
                 )

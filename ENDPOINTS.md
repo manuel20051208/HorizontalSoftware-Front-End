@@ -215,7 +215,7 @@ se relacionan con inmuebles. La administración agrega, muda o quita cada relaci
 
 `CrearUsuario`: `{tipoUsuario, identificacion, nombreCompleto, fechaNacimiento?, correoElectronico, contrasena, inmuebleId?, inicioContrato?, venceContrato?}`.
 `tipoUsuario`: `ADMINISTRADOR`, `RESIDENTE` o `VIGILANTE`. `inmuebleId` es obligatorio para `RESIDENTE`; `inicioContrato` y `venceContrato` para `ADMINISTRADOR` y `VIGILANTE`.
-`Usuario` trae `correoVerificado` (`false` = falta confirmar el código; la cuenta no se puede activar) e `inmuebles` (sección 3).
+`Usuario` trae `correoVerificado` (`false` = falta confirmar el código; la cuenta no se puede activar) e `inmuebles` (sección 3). También trae `fechaNacimiento`, `inicioContrato` y `venceContrato` (administrador o vigilante; `null` en los demás) y `venceAutorizacion` (invitados), para prellenar el formulario de editar.
 
 ### 4.4 Zonas comunes - `/api/admin/zonas-comunes` (todos **ADMIN**)
 | Método | Ruta | Cuerpo | Respuesta |
@@ -335,7 +335,7 @@ con un solo apartamento el selector no se muestra.
 | DELETE | `/api/residente/invitados/{id}` | - | 204. Quita **su** autorización; el invitado no se borra. Si ningún otro residente lo autoriza, queda inactivo |
 
 - `CrearInvitado`: `{identificacion, nombreCompleto, fechaNacimiento?, correoElectronico?, venceAutorizacion?}`. Sin `venceAutorizacion` la autorización es permanente.
-- `Invitado`: `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente, inmuebles:[{id, direccionInmueble}]}`. `vigente` = activo y autorización no vencida. Un invitado puede estar en varios apartamentos (de uno o varios anfitriones). Autorizar a un invitado que ya existe le agrega el apartamento elegido.
+- `Invitado`: `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente, inmuebles:[{id, direccionInmueble}], fechaNacimiento}`. `vigente` = activo y autorización no vencida. Un invitado puede estar en varios apartamentos (de uno o varios anfitriones). Autorizar a un invitado que ya existe le agrega el apartamento elegido.
 - `Auto`: `{id, duenoId, nombreDueno, placa, parqueaderoId, inmuebleId, direccionInmueble}`. La `placa` es numérica (así está en el diagrama de clases).
 
 ### 5.3 Zonas comunes y reservas
@@ -479,7 +479,8 @@ Endpoints nuevos (detalle en cada sección): `GET/PUT/DELETE` de inmuebles (4.2)
 liquidaciones (4.1); `GET/DELETE` de reglas y rompimientos y `POST /api/admin/reglas-reserva/{id}/zonas` (4.5);
 `GET` y `DELETE` de notificaciones (4.6); CRUD de parqueaderos (4.8, nuevo); `PUT/DELETE /api/residente/auto`,
 `GET/PUT/DELETE /api/residente/invitados/{id}` (5.2) y `GET/PUT /api/residente/reservas/{id}` (5.3).
-Los borrados siguen el diagrama de clases: en una **composición** se borran las partes con el todo; en una
+`Usuario` agrega `fechaNacimiento`, `inicioContrato`, `venceContrato` y `venceAutorizacion`; `Invitado` agrega
+`fechaNacimiento`. Los borrados siguen el diagrama de clases: en una **composición** se borran las partes con el todo; en una
 **agregación** solo se quita el vínculo; si una asociación obligatoria lo impide responde **409**. Los pagos no se
 borran (se anulan o reembolsan) y la pasarela solo se activa o desactiva.
 

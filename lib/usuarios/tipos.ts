@@ -42,6 +42,11 @@ export type Usuario = {
   inmuebles?: InmuebleBasico[] | null
   /** false = el administrador aún no confirma el código enviado al correo: la cuenta no se puede activar. */
   correoVerificado?: boolean | null
+  /** Para prellenar «Editar»: fecha de nacimiento y contrato (administrador/vigilante) o vencimiento (invitado). */
+  fechaNacimiento?: string | null
+  inicioContrato?: string | null
+  venceContrato?: string | null
+  venceAutorizacion?: string | null
 }
 
 /** Un apartamento de la cuenta: `inmuebles[]` de Usuario, Invitado y GET /api/residente/inmuebles. */

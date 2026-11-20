@@ -2,11 +2,12 @@ import { Check, Clock, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo, CampoCheck } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { horaLegible } from '@/lib/api/acciones'
 import type { Zona } from '@/lib/api/tipos'
-import { alternarZona, crearZona } from '@/lib/admin/acciones'
+import { actualizarZona, alternarZona, crearZona, eliminarZona } from '@/lib/admin/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -94,13 +95,41 @@ export default async function ZonasPage() {
                       </span>
                     </td>
                     <td className={styles.celdaAccion}>
-                      <BotonAccion
-                        accion={alternarZona.bind(null, z.id)}
-                        variante={z.isActive ? 'quiet' : 'secondary'}
-                        confirmar={`¿${z.isActive ? 'Desactivar' : 'Activar'} la zona ${z.nombreZonaComun}?`}
-                      >
-                        {z.isActive ? 'Desactivar' : 'Activar'}
-                      </BotonAccion>
+                      <div className={styles.accionesCabecera}>
+                        <BotonAccion
+                          accion={alternarZona.bind(null, z.id)}
+                          variante={z.isActive ? 'quiet' : 'secondary'}
+                          confirmar={`¿${z.isActive ? 'Desactivar' : 'Activar'} la zona ${z.nombreZonaComun}?`}
+                        >
+                          {z.isActive ? 'Desactivar' : 'Activar'}
+                        </BotonAccion>
+                        <Editar
+                          titulo={`Editar ${z.nombreZonaComun}`}
+                          accion={actualizarZona.bind(null, z.id)}
+                          ariaLabel={`Editar la zona ${z.nombreZonaComun}`}
+                        >
+                          <Campo prefijo={`zona-${z.id}`} nombre="nombreZonaComun" etiqueta="Nombre" maxLength={100} valor={z.nombreZonaComun} requerido />
+                          <Campo
+                            prefijo={`zona-${z.id}`}
+                            nombre="capacidad"
+                            etiqueta="Capacidad"
+                            tipo="number"
+                            min={1}
+                            step={1}
+                            valor={z.capacidad}
+                            requerido
+                            inputMode="numeric"
+                          />
+                          <Campo prefijo={`zona-${z.id}`} nombre="horaInicio" etiqueta="Hora de inicio" tipo="time" valor={z.horaInicio.slice(0, 5)} requerido />
+                          <Campo prefijo={`zona-${z.id}`} nombre="horaFin" etiqueta="Hora de fin" tipo="time" valor={z.horaFin.slice(0, 5)} requerido />
+                        </Editar>
+                        <Eliminar
+                          titulo={`Eliminar ${z.nombreZonaComun}`}
+                          accion={eliminarZona.bind(null, z.id)}
+                          ariaLabel={`Eliminar la zona ${z.nombreZonaComun}`}
+                          efectos="La zona se quita de todos los inmuebles. No se puede borrar si tiene reservas (desactívala) o reglas asignadas (quítalas primero)."
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

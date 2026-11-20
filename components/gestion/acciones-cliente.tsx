@@ -8,7 +8,8 @@ import styles from './gestion.module.css'
 type AccionFormulario = (previo: EstadoAccion, datos: FormData) => Promise<EstadoAccion>
 type AccionBoton = (previo: EstadoAccion) => Promise<EstadoAccion>
 
-function Mensaje({ estado }: { estado: EstadoAccion }) {
+/** Resultado de una acción: confirmación o error con sus detalles. */
+export function Mensaje({ estado }: { estado: EstadoAccion }) {
   if (!estado) return null
   if (estado.estado === 'ok') {
     return (

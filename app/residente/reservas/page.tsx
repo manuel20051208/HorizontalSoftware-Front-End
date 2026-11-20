@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo, CampoSelect } from '@/components/gestion/campos'
+import { Editar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Paginacion, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { ChipReserva } from '@/components/ui/chip-reserva'
@@ -10,7 +11,7 @@ import { horaLegible } from '@/lib/api/acciones'
 import { consultaPagina, leerPagina, listaDe, listado, paginaDeUrl, type Listado } from '@/lib/api/paginacion'
 import { diaReserva, horarioReserva, hoyColombia, intervaloReserva, porInicio } from '@/lib/api/reservas'
 import { type Disponibilidad, type EstadoReserva, type Reserva, type Zona } from '@/lib/api/tipos'
-import { cancelarReserva, reservar } from '@/lib/residente/acciones'
+import { cancelarReserva, reprogramarReserva, reservar } from '@/lib/residente/acciones'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
 
@@ -285,13 +286,49 @@ export default async function ReservasPage({ searchParams }: Props) {
                     </td>
                     <td className={styles.celdaAccion}>
                       {r.cancelable && (
-                        <BotonAccion
-                          accion={cancelarReserva.bind(null, r.id)}
-                          variante="quiet"
-                          confirmar={`¿Cancelar tu reserva de ${r.nombreZonaComun}?`}
-                        >
-                          Cancelar
-                        </BotonAccion>
+                        <div className={styles.accionesCabecera}>
+                          <Editar
+                            titulo={`Reprogramar ${r.nombreZonaComun}`}
+                            boton="Reprogramar"
+                            textoGuardar="Reprogramar"
+                            accion={reprogramarReserva.bind(null, r.id)}
+                            ariaLabel={`Reprogramar tu reserva de ${r.nombreZonaComun}`}
+                          >
+                            <Campo
+                              prefijo={`res-${r.id}`}
+                              nombre="fecha"
+                              etiqueta="Día"
+                              tipo="date"
+                              min={hoy}
+                              valor={r.fechaHoraInicio.slice(0, 10)}
+                              requerido
+                            />
+                            <Campo
+                              prefijo={`res-${r.id}`}
+                              nombre="inicio"
+                              etiqueta="Hora de inicio"
+                              tipo="time"
+                              valor={r.fechaHoraInicio.slice(11, 16)}
+                              requerido
+                            />
+                            <Campo
+                              prefijo={`res-${r.id}`}
+                              nombre="fin"
+                              etiqueta="Hora de fin"
+                              tipo="time"
+                              valor={r.fechaHoraFin.slice(11, 16)}
+                              requerido
+                              ayuda="Se aplican las mismas reglas que al reservar: horario, anticipación, duración y cupo."
+                            />
+                          </Editar>
+                          <BotonAccion
+                            accion={cancelarReserva.bind(null, r.id)}
+                            variante="quiet"
+                            confirmar={`¿Cancelar tu reserva de ${r.nombreZonaComun}?`}
+                          >
+                            Cancelar
+                          </BotonAccion>
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -596,6 +596,11 @@
   white-space: normal;
 }
 
+/* Formularios de edición: más ancho para varios campos, sin pasarse de la pantalla */
+.popover[data-ancho='amplio'] > .popoverPanel {
+  width: min(26rem, calc(100vw - 2rem));
+}
+
 .popover[data-alinear='inicio'] > .popoverPanel {
   left: 0;
 }
@@ -883,4 +888,13 @@
   .tabla td.sinDato {
     display: none;
   }
+}
+
+/* Celda de acciones de la tabla de cuentas: activar/verificar, editar y eliminar en una fila que se envuelve */
+.accionesFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.375rem;
 }

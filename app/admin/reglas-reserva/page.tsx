@@ -1,12 +1,20 @@
 import { Check, Clock } from 'lucide-react'
 import type { Metadata } from 'next'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
-import { Campo, CampoArea } from '@/components/gestion/campos'
+import { Campo, CampoArea, CampoSelect } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, pesos } from '@/lib/api/acciones'
 import type { Regla, Zona } from '@/lib/api/tipos'
-import { actualizarRegla, alternarRompimiento, crearRegla } from '@/lib/admin/acciones'
+import {
+  actualizarRegla,
+  alternarRompimiento,
+  asignarZonaARegla,
+  crearRegla,
+  eliminarRegla,
+  eliminarRompimiento,
+} from '@/lib/admin/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -116,7 +124,39 @@ export default async function ReglasPage() {
                       {regla.tarifaPenalidad ? ` · penalidad ${pesos(regla.tarifaPenalidad)}` : ''}
                     </p>
                   </div>
-                  <span className="chip">{regla.zonas.filter((z) => z.activa).length} zonas activas</span>
+                  <div className={styles.accionesCabecera}>
+                    <span className="chip">{regla.zonas.filter((z) => z.activa).length} zonas activas</span>
+                    {zonas.some((z) => !regla.zonas.some((r) => r.zonaComunId === z.id)) && (
+                      <Editar
+                        titulo={`Aplicar la regla ${regla.id} a otra zona`}
+                        boton="Aplicar a zona"
+                        textoGuardar="Aplicar"
+                        accion={asignarZonaARegla.bind(null, regla.id)}
+                      >
+                        <CampoSelect
+                          prefijo={`regla-${regla.id}`}
+                          nombre="zonaComunId"
+                          etiqueta="Zona común"
+                          requerido
+                          opciones={zonas
+                            .filter((z) => !regla.zonas.some((r) => r.zonaComunId === z.id))
+                            .map((z) => ({ valor: z.id, texto: z.nombreZonaComun }))}
+                        />
+                        <CampoArea
+                          prefijo={`regla-${regla.id}`}
+                          nombre="observaciones"
+                          etiqueta="Observaciones"
+                          opcional
+                          maxLength={500}
+                        />
+                      </Editar>
+                    )}
+                    <Eliminar
+                      titulo={`Eliminar la regla ${regla.id}`}
+                      accion={eliminarRegla.bind(null, regla.id)}
+                      efectos="Solo se puede eliminar una regla que ya no esté aplicada a ninguna zona: quítala de sus zonas primero."
+                    />
+                  </div>
                 </div>
 
                 <FormularioAccion
@@ -178,15 +218,24 @@ export default async function ReglasPage() {
                           </td>
                           <td className="t-nota" data-label="Observaciones">{z.observaciones ?? '—'}</td>
                           <td className={styles.celdaAccion}>
-                            {z.activa ? (
-                              <BotonAccion accion={alternarRompimiento.bind(null, z.id, false)} variante="quiet">
-                                Inactivar
-                              </BotonAccion>
-                            ) : (
-                              <BotonAccion accion={alternarRompimiento.bind(null, z.id, true)} variante="secondary">
-                                Aplicar
-                              </BotonAccion>
-                            )}
+                            <div className={styles.accionesCabecera}>
+                              {z.activa ? (
+                                <BotonAccion accion={alternarRompimiento.bind(null, z.id, false)} variante="quiet">
+                                  Inactivar
+                                </BotonAccion>
+                              ) : (
+                                <BotonAccion accion={alternarRompimiento.bind(null, z.id, true)} variante="secondary">
+                                  Aplicar
+                                </BotonAccion>
+                              )}
+                              <Eliminar
+                                titulo={`Quitar la regla de ${z.nombreZonaComun}`}
+                                boton="Quitar"
+                                textoConfirmar="Sí, quitar"
+                                accion={eliminarRompimiento.bind(null, z.id)}
+                                efectos="La regla deja de aplicarse a esta zona. La zona y la regla siguen existiendo."
+                              />
+                            </div>
                           </td>
                         </tr>
                       ))}

@@ -7,6 +7,8 @@ type Base = {
   opcional?: boolean
   ancho?: boolean
   requerido?: boolean
+  /** Distingue el id cuando el mismo campo se repite en la página (un formulario de editar por fila). */
+  prefijo?: string
 }
 
 /** Campo de texto/número/fecha/hora. El id y el htmlFor se derivan del nombre. */
@@ -30,7 +32,7 @@ export function Campo({
   minLength?: number
   spellCheck?: boolean
 }) {
-  const id = `campo-${nombre}`
+  const id = `${resto.prefijo ? `${resto.prefijo}-` : ''}campo-${nombre}`
   return (
     <div className={`${styles.grupo} ${resto.ancho ? styles.ancho : ''}`}>
       <label htmlFor={id} className={styles.etiqueta}>
@@ -67,7 +69,7 @@ export function CampoArea({
   filas = 4,
   ...resto
 }: Base & { valor?: string; filas?: number; placeholder?: string; maxLength?: number }) {
-  const id = `campo-${nombre}`
+  const id = `${resto.prefijo ? `${resto.prefijo}-` : ''}campo-${nombre}`
   return (
     <div className={`${styles.grupo} ${resto.ancho ? styles.ancho : ''}`}>
       <label htmlFor={id} className={styles.etiqueta}>
@@ -102,7 +104,7 @@ export function CampoSelect({
   multiple?: boolean
   tamano?: number
 }) {
-  const id = `campo-${nombre}`
+  const id = `${resto.prefijo ? `${resto.prefijo}-` : ''}campo-${nombre}`
   return (
     <div className={`${styles.grupo} ${resto.ancho ? styles.ancho : ''}`}>
       <label htmlFor={id} className={styles.etiqueta}>
@@ -136,13 +138,15 @@ export function CampoCheck({
   etiqueta,
   ayuda,
   marcado = false,
+  prefijo,
 }: {
   nombre: string
   etiqueta: string
   ayuda?: React.ReactNode
   marcado?: boolean
+  prefijo?: string
 }) {
-  const id = `campo-${nombre}`
+  const id = `${prefijo ? `${prefijo}-` : ''}campo-${nombre}`
   return (
     <div className={`${styles.grupo} ${styles.ancho}`}>
       <label htmlFor={id} className={styles.etiqueta} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

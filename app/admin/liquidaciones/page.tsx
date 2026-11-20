@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BotonAccion, FormularioAccion } from '@/components/gestion/acciones-cliente'
 import { Campo, CampoSelect } from '@/components/gestion/campos'
+import { Editar, Eliminar } from '@/components/gestion/crud'
 import { Encabezado, EstadoResultado, Panel, Vacio } from '@/components/gestion/piezas'
 import styles from '@/components/gestion/gestion.module.css'
 import { fechaLarga, hoyBogota, pesos, primerDiaDelMes } from '@/lib/api/acciones'
@@ -12,7 +13,13 @@ import {
   type InmuebleResumen,
   type Liquidacion,
 } from '@/lib/api/tipos'
-import { cambiarEstadoLiquidacion, generarLiquidacion, generarLiquidacionMasiva } from '@/lib/admin/acciones'
+import {
+  actualizarLiquidacion,
+  cambiarEstadoLiquidacion,
+  eliminarLiquidacion,
+  generarLiquidacion,
+  generarLiquidacionMasiva,
+} from '@/lib/admin/acciones'
 import { listaDe, listado, type Listado } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
@@ -238,6 +245,62 @@ export default async function LiquidacionesPage({ searchParams }: Props) {
                           >
                             Marcar al día
                           </BotonAccion>
+                        )}
+                        {l.estado !== 'AL_DIA' && (
+                          <>
+                            <Editar
+                              titulo={`Editar liquidación de ${l.direccionInmueble} (${l.periodo.slice(0, 7)})`}
+                              accion={actualizarLiquidacion.bind(null, l.id)}
+                            >
+                              <Campo
+                                prefijo={`liq-${l.id}`}
+                                nombre="fechaLimite"
+                                etiqueta="Fecha límite"
+                                tipo="date"
+                                valor={l.fechaLimite ?? ''}
+                                requerido
+                              />
+                              <Campo
+                                prefijo={`liq-${l.id}`}
+                                nombre="cuotaAdministracion"
+                                etiqueta="Cuota de administración"
+                                tipo="number"
+                                min={0}
+                                step="any"
+                                valor={l.cuotaAdministracion}
+                                requerido
+                                inputMode="decimal"
+                              />
+                              <Campo
+                                prefijo={`liq-${l.id}`}
+                                nombre="valorServiciosComunes"
+                                etiqueta="Servicios comunes"
+                                tipo="number"
+                                min={0}
+                                step="any"
+                                valor={l.valorServiciosComunes}
+                                requerido
+                                inputMode="decimal"
+                              />
+                              <Campo
+                                prefijo={`liq-${l.id}`}
+                                nombre="valorMultas"
+                                etiqueta="Multas"
+                                tipo="number"
+                                min={0}
+                                step="any"
+                                valor={l.valorMultas}
+                                requerido
+                                inputMode="decimal"
+                                ayuda="El total se recalcula solo."
+                              />
+                            </Editar>
+                            <Eliminar
+                              titulo={`Eliminar liquidación de ${l.direccionInmueble} (${l.periodo.slice(0, 7)})`}
+                              accion={eliminarLiquidacion.bind(null, l.id)}
+                              efectos="Si era la vigente del inmueble, pasa a serlo la más reciente que quede. Las liquidaciones pagadas no se pueden eliminar."
+                            />
+                          </>
                         )}
                       </div>
                     </td>

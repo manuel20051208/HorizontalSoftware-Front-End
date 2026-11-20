@@ -23,6 +23,7 @@ export function useCerrarAlTerminar(estado: { estado: string } | undefined, ok =
  * <details>: sin JavaScript igual se abre y el formulario de dentro se envía. Con JavaScript se cierra al
  * pulsar fuera o con Escape (el foco vuelve al botón) y al abrir el foco va al primer campo.
  * `alinear` = de qué lado del botón crece el panel ('fin' para la última columna de una tabla).
+ * `ancho` = 'amplio' para formularios con varios campos (editar un registro).
  */
 export function Popover({
   boton,
@@ -30,6 +31,7 @@ export function Popover({
   titulo,
   variante = 'secondary',
   alinear = 'inicio',
+  ancho = 'normal',
   children,
 }: {
   boton: React.ReactNode
@@ -37,6 +39,7 @@ export function Popover({
   titulo: string
   variante?: 'primary' | 'secondary' | 'quiet'
   alinear?: 'inicio' | 'fin'
+  ancho?: 'normal' | 'amplio'
   children: React.ReactNode
 }) {
   const ref = useRef<HTMLDetailsElement>(null)
@@ -78,6 +81,7 @@ export function Popover({
       ref={ref}
       className={styles.popover}
       data-alinear={alinear}
+      data-ancho={ancho}
       onToggle={(e) => setAbierto(e.currentTarget.open)}
     >
       <summary
