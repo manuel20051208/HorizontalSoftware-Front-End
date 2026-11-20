@@ -16,8 +16,12 @@ import {
 import { consultaPagina, listaDe, listado, type Listado, TAMANO_MAXIMO } from '@/lib/api/paginacion'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion, requerirSesion } from '@/lib/auth/sesion'
-import { AgregarResidente, QuitarDelApartamento } from '@/components/modules/usuarios/relacion-inmueble'
-import type { RelacionInmueble, Usuario } from '@/lib/usuarios/tipos'
+import {
+  AgregarPersona,
+  type Candidato,
+  QuitarDeApartamento,
+} from '@/components/modules/usuarios/relacion-inmueble'
+import { INVITADO, type Usuario, type UsuarioDeInmueble } from '@/lib/usuarios/tipos'
 import {
   asignarZonas,
   conciliarPago,
@@ -30,13 +34,9 @@ export const metadata: Metadata = { title: 'Detalle del inmueble' }
 
 type Props = { params: Promise<{ id: string }> }
 
-/**
- * Residentes sin apartamento, para «Agregar residente». Al quitar a alguien de su apartamento la cuenta queda
- * inactiva y no se puede activar sin uno, así que basta con pedir los inactivos. Se recorren todas las páginas.
- */
-async function residentesSinApartamento() {
-  const ruta = (pagina: number) =>
-    `${RUTAS_API.usuarios}?tipo=RESIDENTE&active=false&${consultaPagina(pagina, TAMANO_MAXIMO)}`
+/** Todas las cuentas de un tipo (recorre las páginas del listado de usuarios). null si falla. */
+async function todosLosUsuarios(tipo: string): Promise<Usuario[] | null> {
+  const ruta = (pagina: number) => `${RUTAS_API.usuarios}?tipo=${tipo}&${consultaPagina(pagina, TAMANO_MAXIMO)}`
   const primera = await apiConSesion<Listado<Usuario>>('admin', ruta(1), { metodo: 'GET' })
   if (!primera.ok) return null
   const total = Array.isArray(primera.datos) ? 1 : primera.datos.totalPaginas
@@ -45,10 +45,7 @@ async function residentesSinApartamento() {
       apiConSesion<Listado<Usuario>>('admin', ruta(i + 2), { metodo: 'GET' }),
     ),
   )
-  return [primera, ...resto]
-    .flatMap((r) => listaDe(r))
-    .filter((u) => u.tipoUsuario === 'RESIDENTE' && u.inmuebleId === null && u.direccionInmueble === null)
-    .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto, 'es'))
+  return [primera, ...resto].flatMap((r) => listaDe(r))
 }
 
 export default async function InmueblePage({ params }: Props) {
@@ -57,11 +54,12 @@ export default async function InmueblePage({ params }: Props) {
   const inmuebleId = Number(id)
   if (!Number.isSafeInteger(inmuebleId) || inmuebleId <= 0) notFound()
 
-  const [detalleR, zonasR, residentesR, sinApartamento] = await Promise.all([
+  const [detalleR, zonasR, personasR, residentesTodos, invitadosTodos] = await Promise.all([
     apiConSesion<InmuebleDetalle>('admin', RUTAS_API.inmueble(inmuebleId), { metodo: 'GET' }),
     apiConSesion<Listado<Zona>>('admin', listado(RUTAS_API.zonasComunes), { metodo: 'GET' }),
-    apiConSesion<RelacionInmueble[]>('admin', RUTAS_API.residentesDeInmueble(inmuebleId), { metodo: 'GET' }),
-    residentesSinApartamento(),
+    apiConSesion<UsuarioDeInmueble[]>('admin', RUTAS_API.usuariosDeInmueble(inmuebleId), { metodo: 'GET' }),
+    todosLosUsuarios('RESIDENTE'),
+    todosLosUsuarios(INVITADO.tipo),
   ])
 
   if (!detalleR.ok && detalleR.status === 404) notFound()
@@ -79,7 +77,26 @@ export default async function InmueblePage({ params }: Props) {
   const zonas = listaDe(zonasR)
   const asignadas = new Set(inmueble.zonasComunes.map((z) => z.id))
   const liquidacion = inmueble.liquidacionVigente
-  const residentes = residentesR.ok ? listaDe(residentesR) : []
+  const personas = personasR.ok ? listaDe(personasR) : []
+
+  // Cuántos apartamentos tiene cada persona (para avisar si «Quitar» la deja sin ninguno) y quiénes se pueden agregar
+  const apartamentosDe = new Map<number, number>()
+  for (const u of [...(residentesTodos ?? []), ...(invitadosTodos ?? [])]) {
+    apartamentosDe.set(u.identificacion, u.inmuebles?.length ?? 0)
+  }
+  const aCandidatos = (lista: Usuario[]): Candidato[] =>
+    lista
+      .filter((u) => !(u.inmuebles ?? []).some((i) => i.id === inmuebleId))
+      .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto, 'es'))
+      .map((u) => ({
+        identificacion: u.identificacion,
+        nombreCompleto: u.nombreCompleto,
+        sinApartamento: (u.inmuebles ?? []).length === 0,
+      }))
+  const candidatos =
+    residentesTodos && invitadosTodos
+      ? { residentes: aCandidatos(residentesTodos), invitados: aCandidatos(invitadosTodos) }
+      : null
 
   return (
     <div className={styles.pagina}>
@@ -140,19 +157,21 @@ export default async function InmueblePage({ params }: Props) {
       </dl>
 
       <Panel
-        titulo="Residentes"
-        id="residentes-titulo"
-        nota="Las cuentas de residente relacionadas con este apartamento. Sus invitados siguen al residente."
+        titulo="Personas del inmueble"
+        id="personas-titulo"
+        nota="Residentes e invitados relacionados con este apartamento. Una persona puede estar en varios."
       >
-        {!residentesR.ok ? (
-          <EstadoResultado resultado={residentesR} porDefecto="No se pudieron cargar los residentes." />
-        ) : residentes.length === 0 ? (
-          <Vacio>Este apartamento no tiene residentes.</Vacio>
+        {!personasR.ok ? (
+          <EstadoResultado resultado={personasR} porDefecto="No se pudieron cargar las personas del inmueble." />
+        ) : personas.length === 0 ? (
+          <Vacio>Este apartamento no tiene residentes ni invitados.</Vacio>
         ) : (
+          /* Sin el marco con scroll lateral: recortaría el panel flotante de «Quitar» */
           <table className={styles.tabla} data-cards>
             <thead>
               <tr>
                 <th scope="col">Nombre</th>
+                <th scope="col">Tipo</th>
                 <th scope="col">Documento</th>
                 <th scope="col">Estado</th>
                 <th scope="col">
@@ -161,89 +180,51 @@ export default async function InmueblePage({ params }: Props) {
               </tr>
             </thead>
             <tbody>
-              {residentes.map((r) => (
-                <tr key={r.id}>
-                  <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
-                    {r.nombreCompleto}
-                  </td>
-                  <td className="t-columna" data-label="Documento">{r.identificacion}</td>
-                  <td data-label="Estado">
-                    <span className="chip" data-tone={r.active ? 'ok' : 'wait'}>
-                      {r.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
-                      {r.active ? 'Activa' : 'Inactiva'}
-                    </span>
-                  </td>
-                  <td className={styles.derecha}>
-                    <QuitarDelApartamento
-                      identificacion={r.identificacion}
-                      nombre={r.nombreCompleto}
-                      direccion={inmueble.direccionInmueble}
-                      alinear="fin"
-                    />
-                  </td>
-                </tr>
-              ))}
+              {personas.map((u) => {
+                const otros = apartamentosDe.get(u.identificacion)
+                return (
+                  <tr key={u.id}>
+                    <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
+                      {u.nombreCompleto}
+                    </td>
+                    <td data-label="Tipo">{u.tipoUsuario === INVITADO.tipo ? INVITADO.nombre : 'Residente'}</td>
+                    <td className="t-columna" data-label="Documento">{u.identificacion}</td>
+                    <td data-label="Estado">
+                      <span className="chip" data-tone={u.active ? 'ok' : 'wait'}>
+                        {u.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
+                        {u.active ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td className={styles.derecha}>
+                      <QuitarDeApartamento
+                        identificacion={u.identificacion}
+                        nombre={u.nombreCompleto}
+                        tipoUsuario={u.tipoUsuario}
+                        inmuebleId={inmuebleId}
+                        direccion={inmueble.direccionInmueble}
+                        ultimo={otros === undefined ? undefined : otros <= 1}
+                        alinear="fin"
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
 
         {inmueble.isActive === false ? (
-          <p className={`t-nota ${styles.notaSuelta}`}>El inmueble está inactivo: no se le pueden agregar residentes.</p>
-        ) : sinApartamento === null ? (
-          <p className={`t-nota ${styles.notaSuelta}`}>No se pudo cargar la lista de residentes sin apartamento.</p>
-        ) : sinApartamento.length === 0 ? (
-          <p className={`t-nota ${styles.notaSuelta}`}>
-            No hay residentes sin apartamento para agregar. Para traer a uno que ya vive en otro, cámbialo desde{' '}
-            <Link href="/admin/usuarios?tipo=residentes" prefetch={false}>
-              Usuarios
-            </Link>
-            .
-          </p>
+          <p className={`t-nota ${styles.notaSuelta}`}>El inmueble está inactivo: no se le pueden agregar personas.</p>
+        ) : candidatos === null ? (
+          <p className={`t-nota ${styles.notaSuelta}`}>No se pudo cargar la lista de residentes e invitados.</p>
+        ) : candidatos.residentes.length + candidatos.invitados.length === 0 ? (
+          <p className={`t-nota ${styles.notaSuelta}`}>Todos los residentes e invitados ya están en este apartamento.</p>
         ) : (
-          <AgregarResidente
-            inmuebleId={inmuebleId}
-            candidatos={sinApartamento.map((u) => ({ identificacion: u.identificacion, nombreCompleto: u.nombreCompleto }))}
-          />
+          <AgregarPersona inmuebleId={inmuebleId} residentes={candidatos.residentes} invitados={candidatos.invitados} />
         )}
       </Panel>
 
       <div className={styles.rejilla}>
-        <Panel titulo="Personas del inmueble" nota={inmueble.nombresUsuarios.length ? inmueble.nombresUsuarios.join(', ') : 'Sin residentes asignados'}>
-          {inmueble.usuarios.length === 0 ? (
-            <Vacio>Este inmueble aún no tiene usuarios.</Vacio>
-          ) : (
-            <div className={styles.tablaMarco}>
-              <table className={styles.tabla} data-cards>
-                <thead>
-                  <tr>
-                    <th scope="col">Nombre</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Correo</th>
-                    <th scope="col">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inmueble.usuarios.map((u) => (
-                    <tr key={u.id}>
-                      <td className={`t-voz ${styles.nombre} ${styles.celdaPrincipal}`} data-label="Nombre">
-                        {u.nombreCompleto}
-                      </td>
-                      <td className="t-columna" data-label="Documento">{u.identificacion}</td>
-                      <td className={styles.nota} data-label="Correo">{u.correoElectronico}</td>
-                      <td data-label="Estado">
-                        <span className="chip" data-tone={u.active ? 'ok' : 'wait'}>
-                          {u.active ? <Check aria-hidden="true" /> : <Clock aria-hidden="true" />}
-                          {u.active ? 'Activa' : 'Inactiva'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
-
         <Panel
           titulo="Liquidación vigente"
           nota={liquidacion ? `Periodo ${liquidacion.periodo}, vence ${fechaLarga(liquidacion.fechaLimite)}` : 'Genera una liquidación para configurar tarifas y multas.'}

@@ -45,10 +45,10 @@ export async function PaginaCuenta({ modulo }: { modulo: Modulo }) {
               <dt>Rol</dt>
               <dd>{MODULOS[modulo].nombre}</dd>
             </div>
-            {r.datos.direccionInmueble && (
+            {(r.datos.inmuebles?.length ?? 0) > 0 && (
               <div>
-                <dt>Inmueble</dt>
-                <dd>{r.datos.direccionInmueble}</dd>
+                <dt>{r.datos.inmuebles!.length === 1 ? 'Inmueble' : 'Inmuebles'}</dt>
+                <dd>{r.datos.inmuebles!.map((i) => i.direccionInmueble).join(', ')}</dd>
               </div>
             )}
             {r.datos.fechaCreacionCuenta && (

@@ -4,19 +4,38 @@ import { Chip } from '@/components/ui/chip'
 import { listaDe, type Listado } from '@/lib/api/paginacion'
 import type { Resultado } from '@/lib/auth/api'
 import { alternarActivo } from '@/lib/usuarios/acciones'
-import { esTipoCuenta, type Inmueble, TIPOS_CUENTA, type TipoCuenta, type Usuario } from '@/lib/usuarios/tipos'
+import {
+  esTipoCuenta,
+  type Inmueble,
+  INVITADO,
+  tieneApartamentos,
+  TIPOS_CUENTA,
+  type TipoCuenta,
+  type Usuario,
+} from '@/lib/usuarios/tipos'
 import { BotonActivo } from './boton-activo'
-import { ApartamentoResidente } from './relacion-inmueble'
+import { ApartamentosUsuario } from './relacion-inmueble'
 import styles from './usuarios.module.css'
 import { VerificarCorreo } from './verificar-correo'
 
 type Estado = 'activas' | 'inactivas'
+/** Filtro por tipo: las cuentas que crea la administración y los invitados (para manejar sus apartamentos). */
+export type FiltroTipo = TipoCuenta | typeof INVITADO.tipo
+
+const FILTROS: { tipo: FiltroTipo; plural: string; filtro: string }[] = [
+  ...(Object.keys(TIPOS_CUENTA) as TipoCuenta[]).map((t) => ({ tipo: t, ...TIPOS_CUENTA[t] })),
+  INVITADO,
+]
+
+function nombreTipo(tipoUsuario: string) {
+  return esTipoCuenta(tipoUsuario) ? TIPOS_CUENTA[tipoUsuario].nombre : INVITADO.nombre
+}
 
 const fecha = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
-function enlace(tipo?: TipoCuenta, estado?: Estado) {
+function enlace(tipo?: FiltroTipo, estado?: Estado) {
   const q = new URLSearchParams()
-  if (tipo) q.set('tipo', TIPOS_CUENTA[tipo].filtro)
+  if (tipo) q.set('tipo', FILTROS.find((f) => f.tipo === tipo)!.filtro)
   if (estado) q.set('estado', estado)
   return q.size ? `/admin/usuarios?${q}` : '/admin/usuarios'
 }
@@ -35,13 +54,13 @@ export function UsuariosVista({
   inmuebles,
 }: {
   resultado: Resultado<Listado<Usuario>>
-  tipo?: TipoCuenta
+  tipo?: FiltroTipo
   estado?: Estado
   /** Apartamentos activos, para asignar o cambiar el de un residente (null = no se pudieron cargar). */
   inmuebles: Inmueble[] | null
 }) {
-  // Los invitados (USUARIO_AUTORIZADO) los maneja cada residente; aquí solo van las cuentas que crea la administración
-  const usuarios = listaDe(resultado).filter((u) => esTipoCuenta(u.tipoUsuario))
+  // Los invitados (USUARIO_AUTORIZADO) los crea y activa cada residente: aquí solo se manejan sus apartamentos
+  const usuarios = listaDe(resultado).filter((u) => esTipoCuenta(u.tipoUsuario) || u.tipoUsuario === INVITADO.tipo)
 
   return (
     <div className={styles.pagina}>
@@ -68,10 +87,10 @@ export function UsuariosVista({
               Todas
             </Link>
           </li>
-          {(Object.keys(TIPOS_CUENTA) as TipoCuenta[]).map((t) => (
-            <li key={t}>
-              <Link href={enlace(t, estado)} className={styles.filtro} aria-current={tipo === t ? 'page' : undefined}>
-                {TIPOS_CUENTA[t].plural}
+          {FILTROS.map((f) => (
+            <li key={f.tipo}>
+              <Link href={enlace(f.tipo, estado)} className={styles.filtro} aria-current={tipo === f.tipo ? 'page' : undefined}>
+                {f.plural}
               </Link>
             </li>
           ))}
@@ -113,7 +132,7 @@ export function UsuariosVista({
               <tr>
                 <th scope="col">Persona</th>
                 <th scope="col">Tipo</th>
-                <th scope="col">Apartamento</th>
+                <th scope="col">Apartamentos</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Creada</th>
                 <th scope="col">
@@ -125,28 +144,29 @@ export function UsuariosVista({
               {usuarios.map((u) => {
                 const activa = u.active === true
                 // Sin verificar el correo la cuenta no se puede activar: primero va el código
-                const pendiente = !activa && u.correoVerificado === false
-                const tipoU = u.tipoUsuario as TipoCuenta
+                const tipoU = u.tipoUsuario
+                // Los invitados no verifican correo con la administración: los autoriza su residente
+                const pendiente = !activa && u.correoVerificado === false && esTipoCuenta(tipoU)
                 return (
                   <tr key={u.id}>
                     <td className={styles.cPersona}>
                       <span className={`t-voz ${styles.nombre}`}>{u.nombreCompleto}</span>
                       <span className={`t-nota ${styles.correo}`}>{u.correoElectronico}</span>
                     </td>
-                    <td className={styles.cTipo}>{TIPOS_CUENTA[tipoU].nombre}</td>
-                    {tipoU === 'RESIDENTE' ? (
+                    <td className={styles.cTipo}>{nombreTipo(tipoU)}</td>
+                    {tieneApartamentos(tipoU) ? (
                       <td className={styles.cApto}>
-                        <ApartamentoResidente
+                        <ApartamentosUsuario
                           identificacion={u.identificacion}
                           nombre={u.nombreCompleto}
-                          inmuebleId={u.inmuebleId}
-                          direccion={u.direccionInmueble}
-                          inmuebles={inmuebles}
+                          tipoUsuario={tipoU}
+                          inmuebles={u.inmuebles ?? []}
+                          disponibles={inmuebles}
                         />
                       </td>
                     ) : (
-                      <td className={`${styles.cApto} ${u.direccionInmueble ? '' : styles.sinDato}`}>
-                        {u.direccionInmueble ?? <span aria-label="Sin apartamento">—</span>}
+                      <td className={`${styles.cApto} ${styles.sinDato}`}>
+                        <span aria-label="No aplica">—</span>
                       </td>
                     )}
                     <td className={styles.cEstado}>
@@ -177,7 +197,8 @@ export function UsuariosVista({
                         />
                       ) : (
                         /* El backend no deja activar ni desactivar administradores desde aquí */
-                        tipoU !== 'ADMINISTRADOR' && (
+                        /* Ni administradores ni invitados (los activa su residente) */
+                        esTipoCuenta(tipoU) && tipoU !== 'ADMINISTRADOR' && (
                         <BotonActivo
                           activa={activa}
                           nombre={u.nombreCompleto}

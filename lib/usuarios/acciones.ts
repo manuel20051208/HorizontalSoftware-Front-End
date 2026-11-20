@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { Resultado } from '@/lib/auth/api'
 import { RUTAS_API } from '@/lib/auth/config'
 import { apiConSesion } from '@/lib/auth/sesion'
-import { esTipoCuenta, hoyBogota, type RelacionInmueble, type TipoCuenta, type Usuario } from './tipos'
+import { esTipoCuenta, hoyBogota, type TipoCuenta, type UsuarioInmuebles, type Usuario } from './tipos'
 
 export type CampoCuenta =
   | 'tipoUsuario'
@@ -200,7 +200,7 @@ export async function reenviarCodigo(identificacion: number, _previo: EstadoVeri
   return { estado: 'reenviado', mensaje: 'Se envió un código nuevo. El anterior ya no sirve.' }
 }
 
-// ---------- Relación de un residente con su inmueble ----------
+// ---------- Apartamentos de residentes e invitados (muchos a muchos) ----------
 
 export type EstadoRelacion = { estado: 'ok'; mensaje: string } | { estado: 'error'; mensaje: string } | undefined
 
@@ -211,7 +211,7 @@ function refrescarRelacion() {
   revalidatePath('/admin/inmuebles/[id]', 'page')
 }
 
-/** 404, 403 y 409 traen el motivo exacto del back (ya tiene inmueble, inmueble inactivo, mismo inmueble...). */
+/** 404, 403 y 409 traen el motivo exacto del back (ya está relacionado, inmueble inactivo...): se muestra tal cual. */
 function errorRelacion(r: Extract<Resultado<unknown>, { ok: false }>, porDefecto: string): EstadoRelacion {
   if (r.status === 0) return { estado: 'error', mensaje: SIN_CONEXION }
   if (r.status === 400) return { estado: 'error', mensaje: r.errores?.inmuebleId ?? (r.mensaje || 'Elige un apartamento.') }
@@ -223,65 +223,74 @@ function idDe(datos: FormData, campo: string) {
   return Number.isSafeInteger(n) && n > 0 ? n : undefined
 }
 
-async function relacionar(
-  identificacion: number,
-  inmuebleId: number,
-  metodo: 'POST' | 'PUT',
-): Promise<EstadoRelacion> {
-  const r = await apiConSesion<RelacionInmueble>('admin', RUTAS_API.relacionInmueble(identificacion), {
-    metodo,
-    body: { inmuebleId },
-  })
-  if (!r.ok) return errorRelacion(r, 'No se pudo guardar el apartamento. Intenta de nuevo.')
-  refrescarRelacion()
-  const nombre = r.datos?.nombreCompleto ?? 'La cuenta'
-  const apto = r.datos?.direccionInmueble ?? 'el apartamento elegido'
-  return { estado: 'ok', mensaje: `${nombre} quedó en ${apto}.` }
+function direccionDe(r: UsuarioInmuebles | null | undefined, inmuebleId: number) {
+  return r?.inmuebles?.find((i) => i.id === inmuebleId)?.direccionInmueble ?? 'el apartamento elegido'
 }
 
-/** POST: asigna un apartamento a un residente que no tiene. No activa la cuenta. */
-export async function vincularInmueble(
+async function agregar(identificacion: number, inmuebleId: number): Promise<EstadoRelacion> {
+  const r = await apiConSesion<UsuarioInmuebles>('admin', RUTAS_API.inmueblesDeUsuario(identificacion), {
+    body: { inmuebleId },
+  })
+  if (!r.ok) return errorRelacion(r, 'No se pudo agregar el apartamento. Intenta de nuevo.')
+  refrescarRelacion()
+  return { estado: 'ok', mensaje: `${r.datos?.nombreCompleto ?? 'La cuenta'} quedó también en ${direccionDe(r.datos, inmuebleId)}.` }
+}
+
+/** POST desde la lista de usuarios: le agrega un apartamento más a la cuenta. No la activa. */
+export async function agregarInmueble(
   identificacion: number,
   _previo: EstadoRelacion,
   datos: FormData,
 ): Promise<EstadoRelacion> {
   const inmuebleId = idDe(datos, 'inmuebleId')
   if (!inmuebleId) return { estado: 'error', mensaje: 'Elige el apartamento.' }
-  return relacionar(identificacion, inmuebleId, 'POST')
+  return agregar(identificacion, inmuebleId)
 }
 
-/** POST desde el detalle del inmueble: el apartamento ya está fijo y se elige al residente. */
-export async function agregarResidente(
+/** POST desde el detalle del inmueble: el apartamento ya está fijo y se elige a la persona. */
+export async function agregarPersona(
   inmuebleId: number,
   _previo: EstadoRelacion,
   datos: FormData,
 ): Promise<EstadoRelacion> {
   const identificacion = idDe(datos, 'identificacion')
-  if (!identificacion) return { estado: 'error', mensaje: 'Elige al residente.' }
-  return relacionar(identificacion, inmuebleId, 'POST')
+  if (!identificacion) return { estado: 'error', mensaje: 'Elige a la persona.' }
+  return agregar(identificacion, inmuebleId)
 }
 
 /**
- * PUT: muda al residente a otro apartamento. El back muda con él a sus invitados exclusivos, libera el
- * parqueadero de su auto y cancela sus reservas futuras de zonas que el apartamento nuevo no tiene.
+ * PUT: muda la cuenta del apartamento `origenId` al elegido. El back mueve sus reservas futuras si la zona existe
+ * en el destino (si no, las cancela), libera el parqueadero del origen y muda a sus invitados que no tengan otro
+ * anfitrión en el origen.
  */
-export async function cambiarInmueble(
+export async function mudarInmueble(
   identificacion: number,
+  origenId: number,
   _previo: EstadoRelacion,
   datos: FormData,
 ): Promise<EstadoRelacion> {
   const inmuebleId = idDe(datos, 'inmuebleId')
   if (!inmuebleId) return { estado: 'error', mensaje: 'Elige el apartamento nuevo.' }
-  return relacionar(identificacion, inmuebleId, 'PUT')
+  const r = await apiConSesion<UsuarioInmuebles>('admin', RUTAS_API.inmuebleDeUsuario(identificacion, origenId), {
+    metodo: 'PUT',
+    body: { inmuebleId },
+  })
+  if (!r.ok) return errorRelacion(r, 'No se pudo mudar. Intenta de nuevo.')
+  refrescarRelacion()
+  return { estado: 'ok', mensaje: `${r.datos?.nombreCompleto ?? 'La cuenta'} quedó en ${direccionDe(r.datos, inmuebleId)}.` }
 }
 
 /**
- * DELETE: quita al residente de su apartamento. La cuenta queda inactiva y sin sesión, sus invitados
- * exclusivos se desactivan, se libera el parqueadero y se cancelan sus reservas futuras.
+ * DELETE: quita la cuenta de un apartamento. Si era el último queda inactiva y sin sesión. Se cancelan sus
+ * reservas futuras de ese apartamento y sus invitados lo pierden si ningún otro anfitrión sigue allí.
  */
-export async function desvincularInmueble(identificacion: number, _previo: EstadoRelacion): Promise<EstadoRelacion> {
-  const r = await apiConSesion('admin', RUTAS_API.relacionInmueble(identificacion), { metodo: 'DELETE' })
+export async function quitarInmueble(
+  identificacion: number,
+  inmuebleId: number,
+  _previo: EstadoRelacion,
+): Promise<EstadoRelacion> {
+  const r = await apiConSesion('admin', RUTAS_API.inmuebleDeUsuario(identificacion, inmuebleId), { metodo: 'DELETE' })
   if (!r.ok) return errorRelacion(r, 'No se pudo quitar del apartamento. Intenta de nuevo.')
   refrescarRelacion()
-  return { estado: 'ok', mensaje: 'Quedó sin apartamento y su cuenta inactiva.' }
+  return { estado: 'ok', mensaje: 'Se quitó del apartamento.' }
 }

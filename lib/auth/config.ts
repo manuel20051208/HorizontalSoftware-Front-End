@@ -55,14 +55,16 @@ export const RUTAS_API = {
   zonasDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/zonas-comunes`, // PUT
   recordatorio: (id: number) => `/api/admin/inmuebles/${id}/recordatorio-pago`, // POST
   conciliar: (id: number) => `/api/admin/inmuebles/${id}/conciliar-pago`, // POST
-  residentesDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/residentes`, // GET -> RelacionInmueble[] (por nombre)
+  usuariosDeInmueble: (id: number) => `/api/admin/inmuebles/${id}/usuarios`, // GET -> UsuarioDeInmueble[] (residentes e invitados, por tipo y nombre)
 
   // Administrador · usuarios
   usuarios: '/api/admin/usuarios', // GET ?tipo=&active= -> Usuario[] · POST CrearUsuario -> 201 Usuario
-  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna (409 si el correo no está verificado o el residente no tiene inmueble)
+  activo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/activo`, // PATCH, alterna (409 si el correo no está verificado o la cuenta no tiene ningún inmueble)
   verificarCorreo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/verificar-correo`, // POST { codigo } -> Usuario (activa)
   reenviarCodigo: (identificacion: number) => `/api/admin/usuarios/${identificacion}/reenviar-codigo`, // POST -> 202 { mensaje }
-  relacionInmueble: (identificacion: number) => `/api/admin/usuarios/${identificacion}/inmueble`, // GET · POST/PUT { inmuebleId } -> RelacionInmueble · DELETE -> 204
+  inmueblesDeUsuario: (identificacion: number) => `/api/admin/usuarios/${identificacion}/inmuebles`, // GET · POST { inmuebleId } -> UsuarioInmuebles
+  inmuebleDeUsuario: (identificacion: number, inmuebleId: number) =>
+    `/api/admin/usuarios/${identificacion}/inmuebles/${inmuebleId}`, // PUT { inmuebleId } (mudanza) -> UsuarioInmuebles · DELETE -> 204
 
   // Administrador · zonas comunes y reglas
   zonasComunes: '/api/admin/zonas-comunes', // GET -> Zona[] · POST CrearZona
@@ -81,7 +83,9 @@ export const RUTAS_API = {
   pagoReembolso: (id: number) => `/api/admin/pagos/${id}/reembolso`, // POST
   pasarela: '/api/admin/pasarela', // GET · PUT
 
-  // Residente · cuenta y pagos
+  // Residente · cuenta y pagos. Todas las rutas /api/residente/** y /api/pagos/** del residente llevan
+  // ?inmuebleId= del apartamento elegido: lo agrega apiConSesion (lib/auth/sesion.ts).
+  misInmuebles: '/api/residente/inmuebles', // GET -> InmuebleBasico[] (sus apartamentos)
   miCuenta: '/api/residente/mi-cuenta', // GET -> EstadoCuenta
   misPagos: '/api/residente/pagos', // GET -> Pago[] · POST { metodoPago } -> { pago, urlCheckout }
   miPago: (id: number) => `/api/residente/pagos/${id}`, // GET -> Pago
@@ -120,6 +124,8 @@ export const RUTAS_API = {
 
 export const COOKIE_ACCESS = 'tp_access'
 export const COOKIE_REFRESH = 'tp_refresh'
+/** Apartamento que el residente eligió en el selector (si tiene varios). No es secreto: solo un id. */
+export const COOKIE_INMUEBLE = 'tp_inmueble'
 
 /** Igual a app.jwt.refresh-ttl del backend (7 días). */
 export const REFRESH_MAX_AGE = 60 * 60 * 24 * 7

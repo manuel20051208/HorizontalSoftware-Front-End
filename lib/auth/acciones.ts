@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { esSesion, guardarSesion, llamarApi, type Resultado } from './api'
-import { COOKIE_ACCESS, COOKIE_REFRESH, moduloDeRol, RUTAS_API } from './config'
+import { COOKIE_ACCESS, COOKIE_INMUEBLE, COOKIE_REFRESH, moduloDeRol, RUTAS_API } from './config'
 
 export type EstadoIngreso = { error: string; correo: string } | undefined
 
@@ -49,5 +49,6 @@ export async function cerrarSesion() {
   if (token) await llamarApi(RUTAS_API.logout, { token })
   galletas.delete(COOKIE_ACCESS)
   galletas.delete(COOKIE_REFRESH)
+  galletas.delete(COOKIE_INMUEBLE)
   redirect('/')
 }

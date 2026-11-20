@@ -1,12 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { errorDeApi, exito, numero, texto, type EstadoAccion } from '@/lib/api/acciones'
 import { intervaloReserva } from '@/lib/api/reservas'
 import type { IniciarPago } from '@/lib/api/tipos'
-import { apiConSesion } from '@/lib/auth/sesion'
-import { RUTAS_API } from '@/lib/auth/config'
+import { apiConSesion, inmueblesDelResidente } from '@/lib/auth/sesion'
+import { COOKIE_INMUEBLE, opcionesCookie, REFRESH_MAX_AGE, RUTAS_API } from '@/lib/auth/config'
 
 function refrescarResidente() {
   revalidatePath('/residente')
@@ -14,6 +15,25 @@ function refrescarResidente() {
   revalidatePath('/residente/invitados')
   revalidatePath('/residente/reservas')
   revalidatePath('/residente/auto')
+}
+
+// ---------- Apartamento elegido ----------
+
+export type EstadoSelector = { error: string } | undefined
+
+/**
+ * El residente con varios apartamentos elige sobre cuál trabaja. Se guarda en una cookie que lee apiConSesion
+ * para mandar ?inmuebleId= en todas sus llamadas; se valida contra sus apartamentos.
+ */
+export async function elegirInmueble(_previo: EstadoSelector, datos: FormData): Promise<EstadoSelector> {
+  const inmuebleId = numero(datos, 'inmuebleId')
+  const suyos = await inmueblesDelResidente()
+  if (!inmuebleId || !suyos.some((i) => i.id === inmuebleId)) {
+    return { error: 'Ese apartamento no aparece entre los tuyos. Recarga la página.' }
+  }
+  ;(await cookies()).set(COOKIE_INMUEBLE, String(inmuebleId), opcionesCookie(REFRESH_MAX_AGE))
+  revalidatePath('/residente', 'layout')
+  return undefined
 }
 
 // ---------- Pagos ----------

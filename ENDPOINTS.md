@@ -99,10 +99,12 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
   "refresh_token": "...",
   "usuario": { "id": 1, "identificacion": 1000000001, "nombreCompleto": "...", "correoElectronico": "...",
                "tipoUsuario": "ADMINISTRADOR", "active": true, "notificacionLeida": false,
-               "fechaCreacionCuenta": "2026-11-08", "inmuebleId": null, "direccionInmueble": null,
+               "fechaCreacionCuenta": "2026-11-08", "inmuebles": [],
                "correoVerificado": true }
 }
 ```
+`Usuario.inmuebles`: `[{id, direccionInmueble}]`, los apartamentos de un residente o invitado ordenados por dirección (vacío para administradores y vigilantes). Reemplaza a los antiguos `inmuebleId` y `direccionInmueble`.
+
 > Nota: `refreshToken` va en camelCase en el cuerpo de `/refresh`, pero llega como `refresh_token` en la respuesta.
 
 **Contraseña nueva:** mínimo 8 caracteres, con al menos una letra y un número.
@@ -121,6 +123,9 @@ Un valor fuera de rango o que no sea entero responde **400** (no se recorta en s
 | GET | `/api/admin/liquidaciones?inmuebleId=&estado=&periodo=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Liquidacion>` (periodo más reciente primero) |
 | PATCH | `/api/admin/liquidaciones/{id}/mora` | - | 200 `Liquidacion` |
 | PATCH | `/api/admin/liquidaciones/{id}/al-dia` | - | 200 `Liquidacion` |
+| GET | `/api/admin/liquidaciones/{id}` | - | 200 `Liquidacion` |
+| PUT | `/api/admin/liquidaciones/{id}` | `{fechaLimite, cuotaAdministracion, valorServiciosComunes, valorMultas}` | 200 `Liquidacion` (total recalculado; 409 si está `AL_DIA`) |
+| DELETE | `/api/admin/liquidaciones/{id}` | - | 204 (409 si está `AL_DIA`; si era la vigente, pasa a serlo la más reciente que quede) |
 
 Todos: **ADMIN**.
 
@@ -139,12 +144,14 @@ Todos: **ADMIN**.
 | POST | `/api/admin/inmuebles` | `{direccionInmueble, valorParqueadero?}` (formato `TORRE-APTO`, ej. `A-302`) | 201 `Detalle` |
 | GET | `/api/admin/inmuebles?pagina=&tamano=` | - | 200 `Pagina<Resumen>` (por dirección) |
 | GET | `/api/admin/inmuebles/{id}` | - | 200 `Detalle` |
+| PUT | `/api/admin/inmuebles/{id}` | `{direccionInmueble, isActive}` | 200 `Detalle` (409 si la dirección ya existe) |
+| DELETE | `/api/admin/inmuebles/{id}` | - | 204. Borra con él sus pagos, parqueadero y liquidaciones (composición); a sus residentes, zonas y notificaciones solo les quita el vínculo (agregación). 409 si tiene reservas registradas: desactívelo con `isActive=false` |
 | PUT | `/api/admin/inmuebles/{id}/tarifas` | `{cuotaAdministracion, valorServiciosComunes, valorParqueadero?}` | 200 `Liquidacion` |
 | PUT | `/api/admin/inmuebles/{id}/multas` | `{valorMultas}` | 200 `Liquidacion` |
 | PUT | `/api/admin/inmuebles/{id}/zonas-comunes` | `{zonaComunIds: [..]}` (no vacío) | 200 `Zona[]` |
 | POST | `/api/admin/inmuebles/{id}/recordatorio-pago` | - | 201 `Notificacion` |
 | POST | `/api/admin/inmuebles/{id}/conciliar-pago` | `{monto, metodoPago, referencia?}` | 201 `Pago` |
-| GET | `/api/admin/inmuebles/{id}/residentes` | - | 200 `RelacionInmueble[]` (por nombre; 404 si el inmueble no existe). Ver *Relación con inmueble* en 4.3 |
+| GET | `/api/admin/inmuebles/{id}/usuarios` | - | 200 `UsuarioDeInmueble[]` (residentes e invitados del inmueble, por tipo y nombre; 404 si no existe). Ver *Apartamentos de residentes e invitados* en 4.3 |
 
 - `Resumen`: `{id, direccionInmueble, isActive, estadoPago, saldoPendiente, fechaLimitePendiente, valorParqueadero, totalLiquidaciones}`.
 - `Detalle`: lo anterior más `nombresUsuarios`, `usuarios` (`Usuario[]`), `zonasComunes` (`Zona[]`) y `liquidacionVigente`.
@@ -156,20 +163,23 @@ Todos: **ADMIN**.
 |---|---|---|---|
 | POST | `/api/admin/usuarios` | `CrearUsuario` | 201 `Usuario` |
 | GET | `/api/admin/usuarios?tipo=&active=&pagina=&tamano=` | filtros opcionales | 200 `Pagina<Usuario>` (por nombre) |
+| GET | `/api/admin/usuarios/{identificacion}` | - | 200 `Usuario` |
+| PUT | `/api/admin/usuarios/{identificacion}` | `{nombreCompleto, fechaNacimiento?, correoElectronico, inicioContrato?, venceContrato?, venceAutorizacion?}` | 200 `Usuario`. Contrato obligatorio para ADMINISTRADOR y VIGILANTE; `venceAutorizacion` solo aplica a invitados. **Cambiar el correo deja la cuenta inactiva y sin sesión** y envía un código nuevo para verificarlo (409 si el correo es de otra cuenta) |
+| DELETE | `/api/admin/usuarios/{identificacion}` | - | 204. Borra con la cuenta su auto y sus reservas (composición); sus invitados, notificaciones e inmuebles siguen existiendo (agregación). 409 si es la propia cuenta o un administrador que creó reglas de reserva |
 | POST | `/api/admin/usuarios/{identificacion}/verificar-correo` | `{codigo}` (4 cifras) | 200 `Usuario` (correo verificado y cuenta activa) |
 | POST | `/api/admin/usuarios/{identificacion}/reenviar-codigo` | - | 202 `{mensaje}` |
-| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo; 409 si intenta activar una cuenta con el correo sin verificar o un `RESIDENTE` sin inmueble) |
-| GET | `/api/admin/usuarios/{identificacion}/inmueble` | - | 200 `RelacionInmueble` |
-| POST | `/api/admin/usuarios/{identificacion}/inmueble` | `{inmuebleId}` | 201 `RelacionInmueble` (vincular) |
-| PUT | `/api/admin/usuarios/{identificacion}/inmueble` | `{inmuebleId}` | 200 `RelacionInmueble` (cambiar) |
-| DELETE | `/api/admin/usuarios/{identificacion}/inmueble` | - | 204 (desvincular: la cuenta queda inactiva y sin sesión) |
-| GET | `/api/admin/inmuebles/{id}/residentes` | - | 200 `RelacionInmueble[]` (por nombre) |
+| PATCH | `/api/admin/usuarios/{identificacion}/activo` | - | 200 `{id, nombreCompleto, active}` (alterna activo/inactivo; 409 si intenta activar una cuenta con el correo sin verificar o una cuenta sin ningún inmueble) |
+| GET | `/api/admin/usuarios/{identificacion}/inmuebles` | - | 200 `UsuarioInmuebles` |
+| POST | `/api/admin/usuarios/{identificacion}/inmuebles` | `{inmuebleId}` | 201 `UsuarioInmuebles` (agrega un inmueble) |
+| PUT | `/api/admin/usuarios/{identificacion}/inmuebles/{inmuebleId}` | `{inmuebleId}` (destino) | 200 `UsuarioInmuebles` (mudanza del inmueble de la ruta al del cuerpo) |
+| DELETE | `/api/admin/usuarios/{identificacion}/inmuebles/{inmuebleId}` | - | 204 (lo quita de ese inmueble) |
+| GET | `/api/admin/inmuebles/{id}/usuarios` | - | 200 `UsuarioDeInmueble[]` (por tipo y nombre) |
 
 **Verificación del correo (la única forma de activar una cuenta nueva).**
 1. `POST /api/admin/usuarios` crea la cuenta **inactiva** (`active: false`, `correoVerificado: false`) y envía un código de **4 cifras** al correo que escribió la administración.
 2. El usuario se lo dicta a la administración, que lo confirma con `verificar-correo`. Con el código correcto el correo queda verificado y la cuenta **activa**: ya puede iniciar sesión.
 3. El código se guarda cifrado, **vence a los 15 minutos** y admite **máximo 5 intentos fallidos**. `reenviar-codigo` envía uno nuevo, que **reemplaza** al anterior y **reinicia** los intentos.
-4. El `PATCH .../activo` no salta este paso: con el correo sin verificar responde 409 (y también si es un `RESIDENTE` sin inmueble: «Primero relacione la cuenta con un inmueble»; `verificar-correo` responde ese mismo 409). Desactivar y volver a activar una cuenta ya verificada funciona igual que antes. Los invitados (`USUARIO_AUTORIZADO`) no pasan por aquí: los autoriza su residente.
+4. El `PATCH .../activo` no salta este paso: con el correo sin verificar responde 409 (y también si la cuenta no tiene ningún inmueble: «Primero relacione la cuenta con un inmueble»; `verificar-correo` responde ese mismo 409). Desactivar y volver a activar una cuenta ya verificada funciona igual que antes. Los invitados (`USUARIO_AUTORIZADO`) no pasan por aquí: los autoriza su residente.
 5. Las cuentas que ya estaban activas antes de este cambio quedaron verificadas. Las inactivas quedaron **por verificar**: la administración les reenvía el código desde la lista.
 
 | Código | Cuándo (el front muestra el `mensaje` del back tal cual) |
@@ -177,33 +187,35 @@ Todos: **ADMIN**.
 | 400 | Código incorrecto (`"Codigo incorrecto. Quedan N intentos"`) o que no son 4 cifras (`errores.codigo`) |
 | 403 | La cuenta es de un invitado |
 | 404 | No existe un usuario con esa identificación |
-| 409 | El correo ya está verificado; no hay código vigente; el código venció; se agotaron los intentos; es un `RESIDENTE` sin inmueble («Primero relacione la cuenta con un inmueble») |
+| 409 | El correo ya está verificado; no hay código vigente; el código venció; se agotaron los intentos; la cuenta no tiene ningún inmueble («Primero relacione la cuenta con un inmueble») |
 
-**Relación con inmueble (residente ◇— inmueble).** Solo las cuentas `RESIDENTE` se relacionan con un inmueble;
-los invitados siguen a su residente. El inmueble de un residente ya no es fijo: la administración lo vincula,
-lo cambia o lo quita con `/api/admin/usuarios/{identificacion}/inmueble`.
+**Apartamentos de residentes e invitados (muchos a muchos).** Un residente o un invitado (`USUARIO_AUTORIZADO`)
+puede estar relacionado con **varios** inmuebles, y un inmueble con varias personas. Administradores y vigilantes no
+se relacionan con inmuebles. La administración agrega, muda o quita cada relación con
+`/api/admin/usuarios/{identificacion}/inmuebles`.
 
-- `RelacionInmueble`: `{id, identificacion, nombreCompleto, tipoUsuario, active, inmuebleId, direccionInmueble}`. `inmuebleId` y `direccionInmueble` vienen `null` si el residente no tiene inmueble.
-- **Vincular** (`POST`): solo si no tiene inmueble (si tiene → 409, usar cambiar). **No** activa la cuenta: después se activa con `PATCH .../activo` o `verificar-correo`.
-- **Cambiar** (`PUT`): solo si ya tiene inmueble (si no → 409, usar vincular) y el nuevo es distinto. En la misma operación:
-  1. Sus invitados **exclusivos** (él es su único anfitrión) se mudan con él al inmueble nuevo.
-  2. Los invitados **compartidos** (tienen otro anfitrión) pierden solo el vínculo con él y se quedan en el inmueble viejo.
-  3. Si su auto tenía parqueadero asignado (era del inmueble viejo) queda libre (`parqueaderoId = null`); el auto sigue siendo suyo.
-  4. Se cancelan sus reservas futuras `PROGRAMADA` de zonas que el inmueble nuevo no tiene asignadas. Las `EN_CURSO` no se tocan.
-- **Desvincular** (`DELETE`): la cuenta queda **sin inmueble, inactiva y sin sesión**. Sus invitados exclusivos se **desactivan** (conservan el inmueble viejo), los compartidos pierden solo el vínculo con él, el parqueadero del auto queda libre y se cancelan **todas** sus reservas futuras `PROGRAMADA`.
-- Un residente sin inmueble no se puede activar ni verificar su correo (409) hasta que se le vincule uno.
-- `GET /api/admin/inmuebles/{id}/residentes`: los residentes (`RESIDENTE`) del inmueble, por nombre. Los residentes sin inmueble salen de `GET /api/admin/usuarios?tipo=RESIDENTE&active=false` con `inmuebleId` null.
+- `UsuarioInmuebles`: `{id, identificacion, nombreCompleto, tipoUsuario, active, inmuebles:[{id, direccionInmueble}]}`.
+- `UsuarioDeInmueble`: `{id, identificacion, nombreCompleto, tipoUsuario, active}`.
+- **Agregar** (`POST`): 409 si ya está relacionado con ese inmueble; inmueble inexistente 404, inactivo 409. **No** activa la cuenta: después se activa con `PATCH .../activo` o `verificar-correo`.
+- **Mudar** (`PUT .../inmuebles/{X}` con `{inmuebleId: Y}`): 409 si no estaba en X o ya está en Y.
+- **Quitar** (`DELETE .../inmuebles/{X}`): 409 si no estaba en X.
+- Al salir de X (quitar, o mudarse de X a Y), en la misma operación:
+  1. Si es residente, cada invitado que él autorizó pierde X **solo si ningún otro anfitrión de ese invitado sigue en X**; en una mudanza ese invitado gana Y. Los vínculos residente–invitado se conservan.
+  2. Si su auto tenía un parqueadero de X, queda libre (`parqueaderoId = null`).
+  3. Sus reservas futuras `PROGRAMADA` de X: en una mudanza pasan a Y si la zona está asignada a Y; si no, se cancelan. Al quitar se cancelan todas. Las `EN_CURSO` no se tocan.
+  4. **Una cuenta que se queda sin ningún inmueble queda inactiva y sin sesión** (también los invitados que se queden sin inmuebles por el punto 1), y no se puede activar ni verificar su correo (409 «Primero relacione la cuenta con un inmueble») hasta que se le agregue uno.
+- Crear un residente (`POST /api/admin/usuarios`) sigue pidiendo `inmuebleId`: es su primer inmueble.
+- Las personas sin ningún inmueble salen de `GET /api/admin/usuarios?tipo=RESIDENTE` o `?tipo=USUARIO_AUTORIZADO` con `inmuebles: []`.
 
 | Código | Cuándo (el front muestra el `mensaje` del back tal cual) |
 |---|---|
 | 400 | Falta `inmuebleId` o no es positivo (`errores.inmuebleId`) |
-| 403 | La cuenta es de un invitado (`"Los invitados siguen a su residente: no se relacionan con un inmueble"`) |
-| 404 | `"No existe un usuario con esa identificacion"` / `"El inmueble <id> no existe"` |
-| 409 | `"Solo los residentes se relacionan con un inmueble"`; `"La cuenta ya tiene un inmueble; use cambiar"` (POST); `"La cuenta no tiene un inmueble; use vincular"` (PUT); `"La cuenta no tiene un inmueble relacionado"` (DELETE); `"La cuenta ya esta relacionada con ese inmueble"` (PUT al mismo); `"El inmueble <direccion> esta inactivo"`; el administrador no está vigente |
+| 404 | No existe el usuario o el inmueble |
+| 409 | No es residente ni invitado («Solo residentes e invitados se relacionan con inmuebles»); ya está relacionado con ese inmueble; no estaba en el inmueble de la ruta; ya está en el destino; el inmueble está inactivo; el administrador no está vigente |
 
 `CrearUsuario`: `{tipoUsuario, identificacion, nombreCompleto, fechaNacimiento?, correoElectronico, contrasena, inmuebleId?, inicioContrato?, venceContrato?}`.
 `tipoUsuario`: `ADMINISTRADOR`, `RESIDENTE` o `VIGILANTE`. `inmuebleId` es obligatorio para `RESIDENTE`; `inicioContrato` y `venceContrato` para `ADMINISTRADOR` y `VIGILANTE`.
-`Usuario` trae `correoVerificado` (`false` = falta confirmar el código; la cuenta no se puede activar).
+`Usuario` trae `correoVerificado` (`false` = falta confirmar el código; la cuenta no se puede activar) e `inmuebles` (sección 3).
 
 ### 4.4 Zonas comunes - `/api/admin/zonas-comunes` (todos **ADMIN**)
 | Método | Ruta | Cuerpo | Respuesta |
@@ -211,6 +223,9 @@ lo cambia o lo quita con `/api/admin/usuarios/{identificacion}/inmueble`.
 | POST | `/api/admin/zonas-comunes` | `{nombreZonaComun, capacidad, horaInicio, horaFin, aplicarATodosLosInmuebles?}` | 201 `Zona` |
 | GET | `/api/admin/zonas-comunes?pagina=&tamano=` | - | 200 `Pagina<Zona>` (por nombre) |
 | PATCH | `/api/admin/zonas-comunes/{id}/estado` | - | 200 `Zona` (alterna activa/inactiva) |
+| GET | `/api/admin/zonas-comunes/{id}` | - | 200 `Zona` |
+| PUT | `/api/admin/zonas-comunes/{id}` | `{nombreZonaComun, capacidad, horaInicio, horaFin}` | 200 `Zona` (400 si las horas son iguales; 409 si el nombre ya existe) |
+| DELETE | `/api/admin/zonas-comunes/{id}` | - | 204 (la quita de los inmuebles). 409 si tiene reservas (desactívela) o reglas asignadas (quítelas antes) |
 
 `Zona`: `{id, nombreZonaComun, capacidad, horaInicio, horaFin, isActive, reservasActuales}`. `aplicarATodosLosInmuebles` es `true` por defecto. `capacidad` es cuántas reservas puede tener la zona **al mismo tiempo**. `reservasActuales` cuenta las reservas que aún no terminan (programadas o en curso).
 
@@ -222,6 +237,11 @@ lo cambia o lo quita con `/api/admin/usuarios/{identificacion}/inmueble`.
 | PUT | `/api/admin/reglas-reserva/{id}` | `{anticipacionMinimaHoras, duracionMaximaHoras}` | 200 `Regla` |
 | PATCH | `/api/admin/rompimientos/{id}/aplicar` | - | 200 `Rompimiento` |
 | PATCH | `/api/admin/rompimientos/{id}/inactivar` | - | 200 `Rompimiento` |
+| GET | `/api/admin/reglas-reserva/{id}` | - | 200 `Regla` |
+| DELETE | `/api/admin/reglas-reserva/{id}` | - | 204 (409 si sigue aplicada a alguna zona) |
+| POST | `/api/admin/reglas-reserva/{id}/zonas` | `{zonaComunId, observaciones?}` | 201 `Rompimiento` (aplica la regla a otra zona; 409 si ya estaba) |
+| GET | `/api/admin/rompimientos/{id}` | - | 200 `Rompimiento` |
+| DELETE | `/api/admin/rompimientos/{id}` | - | 204 (quita la regla de esa zona; la zona y la regla siguen) |
 
 - `CrearRegla`: `{anticipacionMinimaHoras, duracionMaximaHoras, horasAntelacionPenalidad?, tarifaPenalidad?, zonaComunIds: [..], observaciones?}`.
 - `Regla`: `{id, anticipacionMinimaHoras, duracionMaximaHoras, horasAntelacionPenalidad, tarifaPenalidad, adminId, zonas: Rompimiento[]}`.
@@ -233,6 +253,9 @@ lo cambia o lo quita con `/api/admin/usuarios/{identificacion}/inmueble`.
 | POST | `/api/admin/notificaciones` | `{mensaje, tipoNotificacion?, usuarioIds?, inmuebleId?}` | 201 `Notificacion` |
 | GET | `/api/admin/notificaciones/{id}/lectura` | - | 200 `{notificacionId, leidos:[..], pendientes:[..]}` |
 | GET | `/api/admin/notificaciones/incidencias?pagina=&tamano=` | - | 200 `Pagina<Notificacion>` (incidencias de portería, más recientes primero) |
+| GET | `/api/admin/notificaciones?pagina=&tamano=` | - | 200 `Pagina<Notificacion>` (todas, más recientes primero) |
+| GET | `/api/admin/notificaciones/{id}` | - | 200 `Notificacion` |
+| DELETE | `/api/admin/notificaciones/{id}` | - | 204 (los usuarios e inmuebles destinatarios siguen existiendo) |
 
 Destinatarios: `usuarioIds`, o `inmuebleId` (sus residentes activos). Si no se envía ninguno, la reciben todos los residentes activos. `tipoNotificacion` por defecto `GENERAL`. `leidos`/`pendientes` son `{usuarioId, nombreCompleto}`.
 
@@ -255,7 +278,34 @@ Una notificación solo se entrega a los destinatarios que aceptan ese tipo segú
 - **Nombre, URLs y llaves se configuran solo en el `.env` del servidor** (`PASARELA_*`). Al arrancar, el back sincroniza la tabla con esos valores y conserva el `estado`. Por API solo se activa o desactiva la pasarela.
 - Anular un pago que no está `PENDIENTE` o reembolsar uno que no está `APROBADO` devuelve 409. Reembolsar reabre la liquidación vigente y notifica al inmueble.
 
+### 4.8 Parqueaderos - `/api/admin/parqueaderos` (todos **ADMIN**)
+| Método | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| POST | `/api/admin/parqueaderos` | `{inmuebleId, valorMensual}` | 201 `Parqueadero` (404 si el inmueble no existe; 409 si ya tiene uno) |
+| GET | `/api/admin/parqueaderos?pagina=&tamano=` | - | 200 `Pagina<Parqueadero>` (por inmueble) |
+| GET | `/api/admin/parqueaderos/{id}` | - | 200 `Parqueadero` |
+| PUT | `/api/admin/parqueaderos/{id}` | `{valorMensual}` | 200 `Parqueadero` |
+| DELETE | `/api/admin/parqueaderos/{id}` | - | 204 (el auto que lo usaba queda sin parqueadero, no se borra) |
+
+`Parqueadero`: `{id, inmuebleId, valorMensual}`. Un inmueble tiene como máximo uno.
+
 ## 5. Residente - `/api/residente` (todos **RESIDENTE**)
+
+**Apartamento elegido.** Un residente puede tener varios apartamentos y trabaja sobre uno a la vez. **Todos** los
+endpoints de `/api/residente/**` y `/api/pagos/**` aceptan `?inmuebleId=` (query):
+- si viene, debe ser uno de los suyos (si no → 403 «Ese inmueble no es suyo»);
+- si no viene y tiene exactamente uno, se usa ese;
+- si no viene y tiene varios → 400 «Indique el inmueble (inmuebleId)»; si no tiene ninguno → 409.
+
+El estado de cuenta, los pagos, las reservas, los invitados y el auto son los del apartamento resuelto. Crear una
+reserva o un invitado los deja en ese apartamento (la reserva guarda su `inmuebleId`).
+
+| Método | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| GET | `/api/residente/inmuebles` | - | 200 `[{id, direccionInmueble}]` (sus apartamentos, por dirección) |
+
+El front guarda el apartamento elegido en una cookie y lo envía como `?inmuebleId=` en cada llamada del residente;
+con un solo apartamento el selector no se muestra.
 
 ### 5.1 Cuenta y pagos
 | Método | Ruta | Cuerpo | Respuesta |
@@ -278,9 +328,14 @@ Una notificación solo se entrega a los destinatarios que aceptan ese tipo segú
 | PATCH | `/api/residente/invitados/estado` | `{invitadoIds: [..]}` | 200 `{cambios:[{invitadoId, active}]}` |
 | GET | `/api/residente/auto` | - | 200 `Auto` |
 | POST | `/api/residente/auto` | `{placa, parqueaderoId?}` | 201 `Auto` |
+| PUT | `/api/residente/auto` | `{placa, parqueaderoId?}` | 200 `Auto` (`parqueaderoId` nulo lo deja sin parqueadero; 403 si es de un inmueble ajeno; 409 si la placa o el parqueadero están ocupados) |
+| DELETE | `/api/residente/auto` | - | 204 |
+| GET | `/api/residente/invitados/{id}` | - | 200 `Invitado` (403 si no lo autorizó usted) |
+| PUT | `/api/residente/invitados/{id}` | `{nombreCompleto, fechaNacimiento?, venceAutorizacion?}` | 200 `Invitado` (400 si `venceAutorizacion` ya pasó) |
+| DELETE | `/api/residente/invitados/{id}` | - | 204. Quita **su** autorización; el invitado no se borra. Si ningún otro residente lo autoriza, queda inactivo |
 
 - `CrearInvitado`: `{identificacion, nombreCompleto, fechaNacimiento?, correoElectronico?, venceAutorizacion?}`. Sin `venceAutorizacion` la autorización es permanente.
-- `Invitado`: `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente}`. `vigente` = activo y autorización no vencida.
+- `Invitado`: `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente, inmuebles:[{id, direccionInmueble}]}`. `vigente` = activo y autorización no vencida. Un invitado puede estar en varios apartamentos (de uno o varios anfitriones). Autorizar a un invitado que ya existe le agrega el apartamento elegido.
 - `Auto`: `{id, duenoId, nombreDueno, placa, parqueaderoId, inmuebleId, direccionInmueble}`. La `placa` es numérica (así está en el diagrama de clases).
 
 ### 5.3 Zonas comunes y reservas
@@ -291,6 +346,8 @@ Una notificación solo se entrega a los destinatarios que aceptan ese tipo segú
 | GET | `/api/residente/reservas?estado=&pagina=&tamano=` | `estado` opcional: `PROGRAMADA`, `EN_CURSO` o `FINALIZADA` | 200 `Pagina<Reserva>` (las suyas, la de inicio más reciente primero) |
 | POST | `/api/residente/reservas` | `{zonaComunId, fechaHoraInicio, fechaHoraFin}` | 201 `Reserva` |
 | DELETE | `/api/residente/reservas/{id}` | - | 204 (solo quien reservó y solo si está `PROGRAMADA`) |
+| GET | `/api/residente/reservas/{id}` | - | 200 `Reserva` (403 si no es suya) |
+| PUT | `/api/residente/reservas/{id}` | `{fechaHoraInicio, fechaHoraFin}` | 200 `Reserva`. Reprograma una reserva suya `PROGRAMADA` con **las mismas validaciones de reservar** (la propia reserva no cuenta contra el cupo ni el solape). 403 si no es suya, 409 si ya empezó |
 
 Cada reserva ocupa un intervalo de fecha y hora: desde `fechaHoraInicio` (incluida) hasta `fechaHoraFin` (excluida), en **hora de Colombia**. Ejemplo:
 
@@ -349,7 +406,7 @@ Los segundos se ignoran (se guarda al minuto).
 | GET | `/api/invitados/{id}/residentes?pagina=&tamano=` | ADMIN o VIGILANTE | 200 `Pagina<Anfitrion>` |
 | GET | `/api/autos/{id}/duenos?inmuebleId=` | ADMIN o VIGILANTE | 200 `{autoId, inmuebleId, duenos:[..]}` |
 
-Un residente solo accede a pagos de su propio inmueble (403 si no).
+Un residente solo accede a pagos de sus propios inmuebles (403 si no). Acepta `?inmuebleId=` como todo `/api/residente/**` (sección 5).
 `Anfitrion` / `Dueno`: `{id, identificacion, nombreCompleto, inmuebleId, direccionInmueble}`.
 
 ## 8. Webhook de la pasarela (Wompi)
@@ -381,12 +438,13 @@ Lo llama **Wompi**, no el front-end. Se configura en el dashboard de Wompi como 
 | POST | `/api/vigilante/incidencias` | cuerpo `{descripcion}` (máx. 300) → 201 `Notificacion` |
 
 - `Acceso`: `{identificacion, nombreCompleto, permitido, motivo, zonasPermitidas:[{zonaComunId, nombreZonaComun, horaInicio, horaFin, reservaHasta}]}`. `permitido`: la persona tiene **ahora** una reserva `EN_CURSO` de una zona activa (suya o de su anfitrión, si es invitado). Una reserva solo programada o ya finalizada no da acceso. `horaInicio`/`horaFin` son el horario de la zona y `reservaHasta` es cuándo termina la reserva que da el acceso.
-- `GET /api/vigilante/invitados`: lista todos los invitados (usuarios autorizados) de la copropiedad, activos o no, ordenados por `nombreCompleto` (desempate por `id`). Cada fila es un `Invitado` (5.2): `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente}`; `vigente` = activo y autorización no vencida. Ejemplo:
+- `GET /api/vigilante/invitados`: lista todos los invitados (usuarios autorizados) de la copropiedad, activos o no, ordenados por `nombreCompleto` (desempate por `id`). Cada fila es un `Invitado` (5.2): `{id, identificacion, nombreCompleto, correoElectronico, active, venceAutorizacion, vigente, inmuebles}`; `vigente` = activo y autorización no vencida. Ejemplo:
   ```json
   {
     "contenido": [
       { "id": 10, "identificacion": 1090123456, "nombreCompleto": "Ana Invitada", "correoElectronico": "ana@mail.com",
-        "active": true, "venceAutorizacion": "2026-11-30", "vigente": true }
+        "active": true, "venceAutorizacion": "2026-11-30", "vigente": true,
+        "inmuebles": [{ "id": 4, "direccionInmueble": "A-302" }] }
     ],
     "pagina": 0,
     "tamano": 20,
@@ -416,18 +474,33 @@ La protección está en anotaciones sobre cada método, no en reglas por URL. Un
 
 Lo que el front debe tener en cuenta desde la última versión de este documento (11-nov-2026). El resto del contrato no cambió.
 
-### 19-nov-2026 - relación con inmueble
+### 19-nov-2026 - CRUD completo de las clases del diagrama
+Endpoints nuevos (detalle en cada sección): `GET/PUT/DELETE` de inmuebles (4.2), usuarios (4.3), zonas comunes (4.4) y
+liquidaciones (4.1); `GET/DELETE` de reglas y rompimientos y `POST /api/admin/reglas-reserva/{id}/zonas` (4.5);
+`GET` y `DELETE` de notificaciones (4.6); CRUD de parqueaderos (4.8, nuevo); `PUT/DELETE /api/residente/auto`,
+`GET/PUT/DELETE /api/residente/invitados/{id}` (5.2) y `GET/PUT /api/residente/reservas/{id}` (5.3).
+Los borrados siguen el diagrama de clases: en una **composición** se borran las partes con el todo; en una
+**agregación** solo se quita el vínculo; si una asociación obligatoria lo impide responde **409**. Los pagos no se
+borran (se anulan o reembolsan) y la pasarela solo se activa o desactiva.
+
+### 19-nov-2026 - relación muchos a muchos
+Residentes e invitados pueden tener **varios apartamentos** y un apartamento varias personas. Reemplaza a la relación
+1 a muchos publicada antes ese mismo día: **se eliminan** `GET/POST/PUT/DELETE /api/admin/usuarios/{identificacion}/inmueble`
+(singular) y `GET /api/admin/inmuebles/{id}/residentes`.
+
 | Rol | Endpoint | Para qué | Sección |
 |---|---|---|---|
-| ADMIN | `GET /api/admin/usuarios/{identificacion}/inmueble` | Consulta el inmueble de un residente (`RelacionInmueble`). | 4.3 |
-| ADMIN | `POST /api/admin/usuarios/{identificacion}/inmueble` | Vincula un residente sin inmueble (`{inmuebleId}`); 201. | 4.3 |
-| ADMIN | `PUT /api/admin/usuarios/{identificacion}/inmueble` | Lo muda a otro inmueble: muda a sus invitados exclusivos, libera el parqueadero y cancela reservas futuras de zonas que el nuevo no tiene. | 4.3 |
-| ADMIN | `DELETE /api/admin/usuarios/{identificacion}/inmueble` | Lo quita del inmueble: la cuenta queda inactiva y sin sesión, sus invitados exclusivos se desactivan; 204. | 4.3 |
-| ADMIN | `GET /api/admin/inmuebles/{id}/residentes` | Residentes de un inmueble (`RelacionInmueble[]`, por nombre). | 4.2 / 4.3 |
+| ADMIN | `GET /api/admin/usuarios/{identificacion}/inmuebles` | Apartamentos de un residente o invitado (`UsuarioInmuebles`). | 4.3 |
+| ADMIN | `POST /api/admin/usuarios/{identificacion}/inmuebles` | Le agrega un apartamento (`{inmuebleId}`); 201. | 4.3 |
+| ADMIN | `PUT /api/admin/usuarios/{identificacion}/inmuebles/{inmuebleId}` | Lo muda de ese apartamento al del cuerpo: reservas futuras pasan si la zona existe en el destino (si no, se cancelan); los invitados se mudan solo si ningún otro anfitrión sigue en el origen. | 4.3 |
+| ADMIN | `DELETE /api/admin/usuarios/{identificacion}/inmuebles/{inmuebleId}` | Lo quita de ese apartamento; si era el último, la cuenta queda inactiva y sin sesión; 204. | 4.3 |
+| ADMIN | `GET /api/admin/inmuebles/{id}/usuarios` | Residentes e invitados del apartamento (`UsuarioDeInmueble[]`). | 4.2 / 4.3 |
+| RESIDENTE | `GET /api/residente/inmuebles` | Sus apartamentos, para el selector. | 5 |
 
-`PATCH .../activo` y `POST .../verificar-correo` responden 409 «Primero relacione la cuenta con un inmueble» si la
-cuenta es un `RESIDENTE` sin inmueble. Un residente puede venir ahora con `inmuebleId` y `direccionInmueble` en `null`
-en `Usuario` (antes nunca).
+**Comportamiento que cambia en endpoints que ya existían**
+- `Usuario` (`/api/auth/me`, listados de admin, crear cuenta, `verificar-correo`) e `Invitado` (residente y vigilante) ya no traen `inmuebleId` ni `direccionInmueble`: traen `inmuebles: [{id, direccionInmueble}]`.
+- Todo `/api/residente/**` y `/api/pagos/**` acepta `?inmuebleId=`. Con varios apartamentos y sin ese parámetro responde **400** «Indique el inmueble (inmuebleId)»; con uno ajeno, **403**.
+- `PATCH .../activo` y `POST .../verificar-correo` responden 409 «Primero relacione la cuenta con un inmueble» si la cuenta (residente o invitado) no tiene ningún inmueble.
 
 ### 19-nov-2026 - verificación del correo con código
 | Rol | Endpoint | Para qué | Sección |
@@ -458,5 +531,5 @@ en `Usuario` (antes nunca).
 
 ### Sin cambios para el front
 - **Zonas comunes del residente** (`GET /api/residente/zonas-comunes`): misma ruta y misma respuesta; solo cambió cómo se resuelve el inmueble por dentro.
-- **Base de datos (V4):** el borrado en cascada sigue el diagrama de clases (composición = cascada, agregación = borrado normal). No hay endpoints que borren inmuebles, residentes, pagos ni zonas, así que no cambia ninguna respuesta. Los únicos `DELETE` son `/api/residente/reservas/{id}` y `/api/admin/usuarios/{identificacion}/inmueble` (quita la relación, no borra la cuenta).
+- **Base de datos (V4):** el borrado en cascada sigue el diagrama de clases (composición = cascada, agregación = borrado normal). No hay endpoints que borren inmuebles, residentes, pagos ni zonas, así que no cambia ninguna respuesta. Los únicos `DELETE` son `/api/residente/reservas/{id}` y `/api/admin/usuarios/{identificacion}/inmuebles/{inmuebleId}` (quita la relación, no borra la cuenta).
 - **Tipos del modelo** (`contrasena` como `String`, `Lombok`): son cambios internos; los cuerpos de `/api/auth/**` son los mismos.

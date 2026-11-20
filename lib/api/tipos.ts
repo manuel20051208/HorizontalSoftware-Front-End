@@ -233,6 +233,8 @@ export type Invitado = {
   active: boolean | null
   venceAutorizacion: string | null
   vigente: boolean
+  /** Apartamentos del invitado (puede estar en varios), por dirección. */
+  inmuebles?: { id: number; direccionInmueble: string }[] | null
 }
 
 export type Anfitrion = {

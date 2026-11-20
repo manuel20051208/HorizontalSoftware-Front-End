@@ -57,6 +57,7 @@ export default async function InvitadosVigilantePage({ searchParams }: Props) {
                   <tr>
                     <th scope="col">Nombre</th>
                     <th scope="col">Identificación</th>
+                    <th scope="col">Apartamentos</th>
                     <th scope="col">Autorizado hasta</th>
                     <th scope="col">Estado</th>
                     <th scope="col">
@@ -70,6 +71,9 @@ export default async function InvitadosVigilantePage({ searchParams }: Props) {
                       <td className={`t-voz ${gestion.nombre} ${gestion.celdaPrincipal}`}>{i.nombreCompleto}</td>
                       <td className="t-columna" data-label="Identificación">
                         {i.identificacion}
+                      </td>
+                      <td data-label="Apartamentos">
+                        {i.inmuebles?.length ? i.inmuebles.map((a) => a.direccionInmueble).join(', ') : '—'}
                       </td>
                       <td className="t-nota" data-label="Autorizado hasta">
                         {i.venceAutorizacion ? fechaLarga(i.venceAutorizacion) : 'Sin vencimiento'}

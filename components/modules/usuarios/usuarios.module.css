@@ -555,13 +555,6 @@
   color: var(--tinta-2);
 }
 
-.relacionAcciones {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.375rem;
-}
-
 /* ---------- Popover: panel flotante anclado a su botón ----------
    Ancho fijo, no estira la fila de la tabla. Es un <details>: el panel solo existe abierto. */
 
@@ -704,6 +697,52 @@
   .popoverCodigo {
     min-height: 44px;
   }
+}
+
+/* Apartamentos de una cuenta: uno por línea, con sus acciones al lado */
+.aptos {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.aptoFila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.125rem;
+}
+
+.aptoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 28px;
+  margin-right: 0.25rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  background: var(--sello-tinte);
+  color: var(--tinta);
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.aptoChip svg {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--sello);
+}
+
+.popoverAlerta {
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radio-control);
+  background: var(--alerta-tinte);
+  color: var(--alerta);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .okRelacion {

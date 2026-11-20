@@ -3,21 +3,36 @@
 import { ArrowRightLeft, Check, CircleAlert, House, HousePlus, UserMinus, UserPlus } from 'lucide-react'
 import { useActionState, useId } from 'react'
 import {
-  agregarResidente,
-  cambiarInmueble,
-  desvincularInmueble,
+  agregarInmueble,
+  agregarPersona,
   type EstadoRelacion,
-  vincularInmueble,
+  mudarInmueble,
+  quitarInmueble,
 } from '@/lib/usuarios/acciones'
-import type { Inmueble } from '@/lib/usuarios/tipos'
+import { INVITADO, type InmuebleBasico } from '@/lib/usuarios/tipos'
 import { Popover, useCerrarAlTerminar, useCerrarPopover } from './popover'
 import styles from './usuarios.module.css'
 
-/** Lo que pasa al mudar o quitar a un residente (lo hace el back en la misma operación). */
-const EFECTOS_CAMBIAR =
-  'Sus invitados que no tengan otro anfitrión se mudan con él, el parqueadero de su auto queda libre y se cancelan sus reservas futuras de zonas que el apartamento nuevo no tenga.'
-const EFECTOS_QUITAR =
-  'Su cuenta queda inactiva y se cierra su sesión. Sus invitados que no tengan otro anfitrión se desactivan, el parqueadero de su auto queda libre y se cancelan todas sus reservas futuras.'
+/* Lo que hace el back en la misma operación, dicho antes de confirmar. */
+function efectosMudar(esInvitado: boolean, origen: string) {
+  return esInvitado
+    ? `Deja ${origen} y queda en el apartamento nuevo. Conserva sus otros apartamentos.`
+    : `Sus reservas futuras de ${origen} pasan al apartamento nuevo si la zona existe allí; si no, se cancelan. El parqueadero de su auto en ${origen} queda libre y sus invitados se mudan solo si ningún otro anfitrión sigue en ${origen}.`
+}
+
+function efectosQuitar(esInvitado: boolean, direccion: string, ultimo: boolean | undefined) {
+  const efectos = esInvitado
+    ? `Deja de estar relacionado con ${direccion}.`
+    : `Se cancelan sus reservas futuras de ${direccion}, el parqueadero de su auto en ${direccion} queda libre y sus invitados pierden ${direccion} si ningún otro anfitrión sigue allí.`
+  const cuenta =
+    ultimo === true
+      ? 'Es su único apartamento: la cuenta quedará inactiva y se cerrará su sesión.'
+      : ultimo === false
+        ? 'Conserva sus otros apartamentos.'
+        : 'Si es su único apartamento, la cuenta quedará inactiva y se cerrará su sesión.'
+  return { efectos, cuenta, alerta: ultimo !== false }
+}
+
 const NO_ACTIVA = 'La cuenta no se activa sola: después actívala o verifica su correo.'
 
 function Resultado({ estado, id }: { estado: EstadoRelacion; id?: string }) {
@@ -39,8 +54,8 @@ function Resultado({ estado, id }: { estado: EstadoRelacion; id?: string }) {
 }
 
 /**
- * Contenido del popover para asignar o cambiar: select y botón en una fila, aviso debajo. Funciona sin
- * JavaScript (es un form). Al guardar con éxito el popover se cierra y la celda muestra el apartamento nuevo.
+ * Contenido del popover para agregar o mudar: select y botón en una fila, aviso debajo. Funciona sin
+ * JavaScript (es un form). Al guardar con éxito el popover se cierra y la celda muestra el cambio.
  */
 function FormularioApartamento({
   accion,
@@ -50,7 +65,7 @@ function FormularioApartamento({
   aviso,
 }: {
   accion: (previo: EstadoRelacion, datos: FormData) => Promise<EstadoRelacion>
-  inmuebles: Inmueble[]
+  inmuebles: InmuebleBasico[]
   etiqueta: string
   boton: string
   aviso: string
@@ -95,14 +110,26 @@ function FormularioApartamento({
   )
 }
 
-/** Confirmación de «Quitar del apartamento» dentro del popover (nada de window.confirm). */
-function ConfirmarQuitar({ identificacion }: { identificacion: number }) {
-  const [estado, enviar, enviando] = useActionState(desvincularInmueble.bind(null, identificacion), undefined)
+/** Confirmación de «Quitar» dentro del popover (nada de window.confirm). */
+function ConfirmarQuitar({
+  accion,
+  efectos,
+  cuenta,
+  alerta,
+}: {
+  accion: (previo: EstadoRelacion) => Promise<EstadoRelacion>
+  efectos: string
+  cuenta: string
+  alerta: boolean
+}) {
+  const [estado, enviar, enviando] = useActionState(accion, undefined)
   const cerrar = useCerrarPopover()
+  useCerrarAlTerminar(estado)
 
   return (
     <form action={enviar} className={styles.popoverForm}>
-      <p className={styles.popoverAyuda}>{EFECTOS_QUITAR}</p>
+      <p className={styles.popoverAyuda}>{efectos}</p>
+      <p className={alerta ? styles.popoverAlerta : styles.popoverAyuda}>{cuenta}</p>
       <Resultado estado={estado} />
       <div className={styles.popoverAcciones}>
         <button type="button" className="btn" data-variant="quiet" data-size="sm" onClick={cerrar}>
@@ -122,18 +149,28 @@ function ConfirmarQuitar({ identificacion }: { identificacion: number }) {
   )
 }
 
-/** «Quitar del apartamento»: abre la confirmación con lo que pasa y el botón que envía el DELETE. */
-export function QuitarDelApartamento({
+/**
+ * «Quitar» a una persona de un apartamento. `ultimo` = es su único apartamento (la cuenta queda inactiva);
+ * undefined si no se sabe (el aviso lo dice como condición).
+ */
+export function QuitarDeApartamento({
   identificacion,
   nombre,
+  tipoUsuario,
+  inmuebleId,
   direccion,
+  ultimo,
   alinear = 'inicio',
 }: {
   identificacion: number
   nombre: string
+  tipoUsuario: string
+  inmuebleId: number
   direccion: string
+  ultimo: boolean | undefined
   alinear?: 'inicio' | 'fin'
 }) {
+  const { efectos, cuenta, alerta } = efectosQuitar(tipoUsuario === INVITADO.tipo, direccion, ultimo)
   return (
     <Popover
       boton={
@@ -147,112 +184,142 @@ export function QuitarDelApartamento({
       variante="quiet"
       alinear={alinear}
     >
-      <ConfirmarQuitar identificacion={identificacion} />
+      <ConfirmarQuitar
+        accion={quitarInmueble.bind(null, identificacion, inmuebleId)}
+        efectos={efectos}
+        cuenta={cuenta}
+        alerta={alerta}
+      />
     </Popover>
   )
 }
 
-/** Celda «Apartamento» de un residente en la lista de usuarios: ver, asignar, cambiar o quitar. */
-export function ApartamentoResidente({
+/**
+ * Celda «Apartamentos» de un residente o invitado en la lista de usuarios: cada apartamento con «Mudar» y
+ * «Quitar», y «Agregar apartamento» al final.
+ */
+export function ApartamentosUsuario({
   identificacion,
   nombre,
-  inmuebleId,
-  direccion,
+  tipoUsuario,
   inmuebles,
+  disponibles,
 }: {
   identificacion: number
   nombre: string
-  inmuebleId: number | null
-  direccion: string | null
-  /** null = no se pudieron cargar los apartamentos. */
-  inmuebles: Inmueble[] | null
+  tipoUsuario: string
+  inmuebles: InmuebleBasico[]
+  /** Apartamentos activos del conjunto (null = no se pudieron cargar). */
+  disponibles: InmuebleBasico[] | null
 }) {
-  const otros = (inmuebles ?? []).filter((i) => i.id !== inmuebleId)
-  const tiene = inmuebleId !== null && direccion !== null
+  const esInvitado = tipoUsuario === INVITADO.tipo
+  const suyos = new Set(inmuebles.map((i) => i.id))
+  const otros = (disponibles ?? []).filter((i) => !suyos.has(i.id))
+  const ultimo = inmuebles.length === 1
 
   return (
     <div className={styles.relacion}>
-      {tiene ? (
-        <span className={styles.relacionApto}>
-          <House aria-hidden="true" />
-          {direccion}
-        </span>
-      ) : (
+      {inmuebles.length === 0 ? (
         <span className={`${styles.relacionApto} ${styles.sinDato}`}>Sin apartamento</span>
+      ) : (
+        <ul className={styles.aptos} aria-label={`Apartamentos de ${nombre}`}>
+          {inmuebles.map((i) => (
+            <li key={i.id} className={styles.aptoFila}>
+              <span className={styles.aptoChip}>
+                <House aria-hidden="true" />
+                {i.direccionInmueble}
+              </span>
+              {otros.length > 0 && (
+                <Popover
+                  boton={
+                    <>
+                      <ArrowRightLeft aria-hidden="true" />
+                      Mudar
+                    </>
+                  }
+                  ariaLabel={`Mudar a ${nombre} de ${i.direccionInmueble} a otro apartamento`}
+                  titulo={`Mudar a ${nombre} de ${i.direccionInmueble}`}
+                  variante="quiet"
+                >
+                  <FormularioApartamento
+                    accion={mudarInmueble.bind(null, identificacion, i.id)}
+                    inmuebles={otros}
+                    etiqueta="Apartamento nuevo"
+                    boton="Mudar"
+                    aviso={efectosMudar(esInvitado, i.direccionInmueble)}
+                  />
+                </Popover>
+              )}
+              <QuitarDeApartamento
+                identificacion={identificacion}
+                nombre={nombre}
+                tipoUsuario={tipoUsuario}
+                inmuebleId={i.id}
+                direccion={i.direccionInmueble}
+                ultimo={ultimo}
+              />
+            </li>
+          ))}
+        </ul>
       )}
 
-      <div className={styles.relacionAcciones}>
-        {inmuebles === null ? (
-          <span className={`t-nota ${styles.sinDato}`}>No se cargaron los apartamentos.</span>
-        ) : tiene ? (
-          otros.length > 0 && (
-            <Popover
-              boton={
-                <>
-                  <ArrowRightLeft aria-hidden="true" />
-                  Cambiar
-                </>
-              }
-              ariaLabel={`Cambiar el apartamento de ${nombre}`}
-              titulo={`Cambiar el apartamento de ${nombre}`}
-            >
-              <FormularioApartamento
-                accion={cambiarInmueble.bind(null, identificacion)}
-                inmuebles={otros}
-                etiqueta="Apartamento nuevo"
-                boton="Cambiar"
-                aviso={EFECTOS_CAMBIAR}
-              />
-            </Popover>
-          )
-        ) : otros.length > 0 ? (
-          <Popover
-            boton={
-              <>
-                <HousePlus aria-hidden="true" />
-                Asignar apartamento
-              </>
-            }
-            ariaLabel={`Asignar un apartamento a ${nombre}`}
-            titulo={`Asignar un apartamento a ${nombre}`}
-          >
-            <FormularioApartamento
-              accion={vincularInmueble.bind(null, identificacion)}
-              inmuebles={otros}
-              etiqueta="Apartamento"
-              boton="Asignar"
-              aviso={NO_ACTIVA}
-            />
-          </Popover>
-        ) : (
-          <span className={`t-nota ${styles.sinDato}`}>No hay apartamentos activos.</span>
-        )}
-        {tiene && <QuitarDelApartamento identificacion={identificacion} nombre={nombre} direccion={direccion} />}
-      </div>
+      {disponibles === null ? (
+        <span className={`t-nota ${styles.sinDato}`}>No se cargaron los apartamentos.</span>
+      ) : otros.length > 0 ? (
+        <Popover
+          boton={
+            <>
+              <HousePlus aria-hidden="true" />
+              Agregar apartamento
+            </>
+          }
+          ariaLabel={`Agregar un apartamento a ${nombre}`}
+          titulo={`Agregar un apartamento a ${nombre}`}
+        >
+          <FormularioApartamento
+            accion={agregarInmueble.bind(null, identificacion)}
+            inmuebles={otros}
+            etiqueta="Apartamento"
+            boton="Agregar"
+            aviso={inmuebles.length === 0 ? NO_ACTIVA : 'Conserva sus otros apartamentos.'}
+          />
+        </Popover>
+      ) : (
+        inmuebles.length === 0 && <span className={`t-nota ${styles.sinDato}`}>No hay apartamentos activos.</span>
+      )}
     </div>
   )
 }
 
-/** En el detalle del inmueble: elige a un residente sin apartamento y lo deja en este. */
-export function AgregarResidente({
+export type Candidato = { identificacion: number; nombreCompleto: string; sinApartamento: boolean }
+
+/** En el detalle del inmueble: elige a un residente o invitado que no esté en este apartamento y lo agrega. */
+export function AgregarPersona({
   inmuebleId,
-  candidatos,
+  residentes,
+  invitados,
 }: {
   inmuebleId: number
-  candidatos: { identificacion: number; nombreCompleto: string }[]
+  residentes: Candidato[]
+  invitados: Candidato[]
 }) {
-  const [estado, enviar, enviando] = useActionState(agregarResidente.bind(null, inmuebleId), undefined)
+  const [estado, enviar, enviando] = useActionState(agregarPersona.bind(null, inmuebleId), undefined)
   const id = useId()
+  const opcion = (c: Candidato) => (
+    <option key={c.identificacion} value={c.identificacion}>
+      {`${c.nombreCompleto} · ${c.identificacion}${c.sinApartamento ? ' (sin apartamento)' : ''}`}
+    </option>
+  )
 
   return (
     <form action={enviar} className={styles.agregarResidente}>
       <div className={styles.activarFila}>
         <div className={`${styles.grupo} ${styles.grupoAncho}`}>
-          <label htmlFor={`${id}-residente`} className={styles.etiqueta}>
-            Residente sin apartamento
+          <label htmlFor={`${id}-persona`} className={styles.etiqueta}>
+            Agregar a este apartamento
           </label>
           <select
-            id={`${id}-residente`}
+            id={`${id}-persona`}
             name="identificacion"
             required
             defaultValue=""
@@ -261,22 +328,20 @@ export function AgregarResidente({
             aria-describedby={estado?.estado === 'error' ? `${id}-error` : `${id}-ayuda`}
           >
             <option value="" disabled>
-              Elige…
+              Elige a la persona…
             </option>
-            {candidatos.map((c) => (
-              <option key={c.identificacion} value={c.identificacion}>
-                {c.nombreCompleto} · {c.identificacion}
-              </option>
-            ))}
+            {residentes.length > 0 && <optgroup label="Residentes">{residentes.map(opcion)}</optgroup>}
+            {invitados.length > 0 && <optgroup label="Invitados">{invitados.map(opcion)}</optgroup>}
           </select>
         </div>
         <button type="submit" className="btn" data-variant="primary" disabled={enviando}>
           <UserPlus aria-hidden="true" />
-          {enviando ? 'Agregando…' : 'Agregar residente'}
+          {enviando ? 'Agregando…' : 'Agregar'}
         </button>
       </div>
       <p id={`${id}-ayuda`} className={styles.ayudaCampo}>
-        {NO_ACTIVA}
+        Conserva sus otros apartamentos. Una cuenta sin apartamento no se activa sola: después actívala o verifica
+        su correo.
       </p>
       <Resultado estado={estado} id={`${id}-error`} />
     </form>
