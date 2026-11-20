@@ -25,46 +25,31 @@ export default async function ZonasPage() {
         descripcion="Salones, gimnasio, piscina y demás espacios reservables. Al crear una zona puedes asignarla a todos los inmuebles."
       />
 
-      <div className={styles.rejilla}>
-        <Panel titulo="Nueva zona" nota="La hora de inicio y la de fin no pueden ser iguales.">
-          <FormularioAccion accion={crearZona} texto="Crear zona">
-            <div className={styles.rejilla}>
-              <Campo nombre="nombreZonaComun" etiqueta="Nombre" maxLength={100} requerido ancho />
-              <Campo
-                nombre="capacidad"
-                etiqueta="Capacidad"
-                tipo="number"
-                min={1}
-                step={1}
-                requerido
-                inputMode="numeric"
-                ayuda="Cuántas reservas puede tener la zona al mismo tiempo."
-              />
-              <Campo nombre="horaInicio" etiqueta="Hora de inicio" tipo="time" requerido />
-              <Campo nombre="horaFin" etiqueta="Hora de fin" tipo="time" requerido />
-            </div>
-            <CampoCheck
-              nombre="aplicarATodosLosInmuebles"
-              etiqueta="Asignar a todos los inmuebles"
-              marcado
-              ayuda="Los inmuebles creados después también la reciben automáticamente."
+      <Panel titulo="Nueva zona" nota="La hora de inicio y la de fin no pueden ser iguales.">
+        <FormularioAccion accion={crearZona} texto="Crear zona">
+          <div className={styles.rejilla}>
+            <Campo nombre="nombreZonaComun" etiqueta="Nombre" maxLength={100} requerido ancho />
+            <Campo
+              nombre="capacidad"
+              etiqueta="Capacidad"
+              tipo="number"
+              min={1}
+              step={1}
+              requerido
+              inputMode="numeric"
+              ayuda="Cuántas reservas puede tener la zona al mismo tiempo."
             />
-          </FormularioAccion>
-        </Panel>
-
-        <Panel titulo="Cómo funcionan las reservas" nota="Reglas que aplica el backend.">
-          <ul className={`t-nota ${styles.lista}`}>
-            <li>La zona debe estar activa y asignada al inmueble del residente.</li>
-            <li>El residente debe estar habilitado: cuenta e inmueble activos y sin mora.</li>
-            <li>Cada reserva tiene día, hora de inicio y hora de fin, y empieza en el futuro.</li>
-            <li>Todo el intervalo debe caber en el horario de la zona; si el horario cruza la medianoche, puede terminar al día siguiente.</li>
-            <li>Se aplican las reglas activas de la zona: anticipación mínima y duración máxima (gana la más estricta).</li>
-            <li>Hay cupo si las reservas que se cruzan con ese intervalo son menos que la capacidad.</li>
-            <li>Un residente no puede tener dos reservas que se crucen en la misma zona.</li>
-            <li>Solo se cancela mientras está programada; en curso o finalizada ya no.</li>
-          </ul>
-        </Panel>
-      </div>
+            <Campo nombre="horaInicio" etiqueta="Hora de inicio" tipo="time" requerido />
+            <Campo nombre="horaFin" etiqueta="Hora de fin" tipo="time" requerido />
+          </div>
+          <CampoCheck
+            nombre="aplicarATodosLosInmuebles"
+            etiqueta="Asignar a todos los inmuebles"
+            marcado
+            ayuda="Los inmuebles creados después también la reciben automáticamente."
+          />
+        </FormularioAccion>
+      </Panel>
 
       <Panel titulo="Zonas del conjunto" nota={zonas.length === 1 ? '1 zona' : `${zonas.length} zonas`}>
         {!r.ok ? (
