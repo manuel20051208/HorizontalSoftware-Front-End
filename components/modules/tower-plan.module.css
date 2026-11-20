@@ -1,7 +1,10 @@
 /* El plano de cartera: una hoja de dibujo donde cada recuadro es un apartamento */
 
+/* Sin overflow propio: el panel le pone altura máxima y scroll interno (.principal > *). Un overflow: visible
+   aquí ganaba en producción por el orden del CSS y el pie se salía por debajo de la hoja, tapado por los
+   paneles vecinos. La pista ya no necesita escaparse: va en un portal sobre <body>. */
 .plano {
-  overflow: visible;
+  position: relative;
 }
 
 .cabecera {
@@ -419,6 +422,17 @@
   border-top: 1px solid var(--linea);
 }
 
+/* Con un apartamento elegido, su detalle queda pegado al fondo de la hoja mientras se recorre el plano
+   (la hoja scrollea por dentro cuando el plano es más alto que ella) */
+.cajetin[data-seleccion='true'] {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  border-radius: 0 0 var(--radio-documento) var(--radio-documento);
+  background: var(--papel-solido);
+  box-shadow: 0 -10px 16px -12px rgb(27 21 72 / 0.4);
+}
+
 .detalle {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
@@ -562,16 +576,6 @@
 
   .vista {
     min-height: 44px;
-  }
-
-  /* Con un apartamento elegido, su detalle queda fijo al borde inferior mientras se recorre el plano */
-  .cajetin[data-seleccion='true'] {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    border-radius: 0 0 var(--radio-documento) var(--radio-documento);
-    background: var(--papel);
-    box-shadow: 0 -10px 16px -12px rgb(27 21 72 / 0.4);
   }
 }
 
