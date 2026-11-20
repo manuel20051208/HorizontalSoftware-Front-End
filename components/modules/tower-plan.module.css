@@ -299,16 +299,16 @@
 
 /* ---------- Indicación al señalar (lo mismo se lee en el pie y en la lista) ---------- */
 
+/* Va en un portal sobre <body> y fija a la ventana: así ninguna hoja vecina (con backdrop-filter) la tapa.
+   Opaca a propósito: un segundo desenfoque dentro de otro se pinta con artefactos. */
 .pista {
-  position: absolute;
-  z-index: 30;
+  position: fixed;
+  z-index: 100;
   width: 14.5rem;
   padding: 0.75rem 0.875rem 0.875rem;
   border: 1px solid var(--linea-fuerte);
   border-radius: 10px;
-  background: var(--papel);
-  -webkit-backdrop-filter: var(--vidrio-blur);
-  backdrop-filter: var(--vidrio-blur);
+  background: var(--papel-solido);
   box-shadow: 0 12px 28px -12px rgb(27 21 72 / 0.45);
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 10px));

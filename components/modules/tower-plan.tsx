@@ -2,7 +2,8 @@
 
 import { Check, CircleAlert, Clock, ExternalLink, Send } from 'lucide-react'
 import Link from 'next/link'
-import { Fragment, useActionState, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useActionState, useEffect, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Chip } from '@/components/ui/chip'
 import { Plate } from '@/components/ui/plate'
 import type { EstadoAccion } from '@/lib/api/acciones'
@@ -22,6 +23,9 @@ const MAX_COLUMNAS_ANCHAS = 20
 const TONO = { AL_DIA: 'ok', POR_VENCER: 'wait', VENCIDA: 'alert', SIN_LIQUIDACION: 'neutral' } as const
 const ICONO_CHIP = { AL_DIA: Check, POR_VENCER: Clock, VENCIDA: CircleAlert, SIN_LIQUIDACION: Clock } as const
 const MARCA = { AL_DIA: 'al-dia', POR_VENCER: 'por-vencer', VENCIDA: 'vencida', SIN_LIQUIDACION: 'sin' } as const
+// La pista va en coordenadas de la ventana: se abre hacia abajo si arriba no cabe (barra fija + alto de la pista)
+const ESPACIO_ARRIBA = 220
+const MEDIO_ANCHO_PISTA = 128
 
 type Unidad = { inmueble: InmuebleResumen; torre: string; apto: number; piso: number }
 type Vista = 'plano' | 'lista'
@@ -94,7 +98,18 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
   const [torreMovil, setTorreMovil] = useState<string>('')
   const [seleccion, setSeleccion] = useState<Unidad | null>(null)
   const [pista, setPista] = useState<Pista | null>(null)
-  const lienzo = useRef<HTMLDivElement>(null)
+
+  // La pista es fija a la ventana: si la página se desplaza o cambia de tamaño, se recoge
+  useEffect(() => {
+    if (!pista) return
+    const recoger = () => setPista(null)
+    window.addEventListener('scroll', recoger, true)
+    window.addEventListener('resize', recoger)
+    return () => {
+      window.removeEventListener('scroll', recoger, true)
+      window.removeEventListener('resize', recoger)
+    }
+  }, [pista])
 
   const unidades = inmuebles
     .map((inmueble) => {
@@ -130,16 +145,18 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
   const gridUno = `1.75rem repeat(${aptos}, var(--tam-celda))`
   const esSeleccion = (u: Unidad) => seleccion?.inmueble.id === u.inmueble.id
 
+  /**
+   * La pista se pinta en un portal sobre <body>, no dentro de la hoja: la hoja tiene backdrop-filter, que crea su
+   * propio contexto de apilamiento, y la pista quedaba por debajo del resumen y de los paneles vecinos.
+   */
   function mostrarPista(u: Unidad, el: HTMLElement) {
-    const caja = lienzo.current?.getBoundingClientRect()
-    if (!caja) return
     const r = el.getBoundingClientRect()
-    const abajo = r.top - caja.top < 170
+    const abajo = r.top < ESPACIO_ARRIBA
     setPista({
       u,
       abajo,
-      x: Math.min(Math.max(r.left - caja.left + r.width / 2, 120), caja.width - 120),
-      y: (abajo ? r.bottom : r.top) - caja.top,
+      x: Math.min(Math.max(r.left + r.width / 2, MEDIO_ANCHO_PISTA), window.innerWidth - MEDIO_ANCHO_PISTA),
+      y: abajo ? r.bottom : r.top,
     })
   }
 
@@ -202,7 +219,7 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
           </div>
 
           {vista === 'plano' ? (
-            <div className={styles.lienzo} ref={lienzo}>
+            <div className={styles.lienzo}>
               <div
                 className={styles.torres}
                 data-modo={modoTabs ? 'tabs' : 'anchos'}
@@ -303,25 +320,27 @@ export function TowerPlan({ inmuebles }: { inmuebles: InmuebleResumen[] }) {
                 ))}
               </div>
 
-              {pista && (
-                <div
-                  className={styles.pista}
-                  data-abajo={pista.abajo}
-                  style={{ left: pista.x, top: pista.y }}
-                  role="tooltip"
-                >
-                  <div className={styles.pistaCabecera}>
-                    <Plate torre={pista.u.torre} apto={pista.u.apto} />
-                    <Chip tono={TONO[pista.u.inmueble.estadoPago]} icono={ICONO_CHIP[pista.u.inmueble.estadoPago]}>
-                      {ESTADO_CARTERA_TEXTO[pista.u.inmueble.estadoPago]}
-                    </Chip>
-                  </div>
-                  <p className={styles.pistaValor}>
-                    {pista.u.inmueble.saldoPendiente > 0 ? pesos(pista.u.inmueble.saldoPendiente) : 'Sin saldo'}
-                  </p>
-                  <p className={styles.pistaFecha}>{textoFecha(pista.u)}</p>
-                </div>
-              )}
+              {pista &&
+                createPortal(
+                  <div
+                    className={styles.pista}
+                    data-abajo={pista.abajo}
+                    style={{ left: pista.x, top: pista.y }}
+                    role="tooltip"
+                  >
+                    <div className={styles.pistaCabecera}>
+                      <Plate torre={pista.u.torre} apto={pista.u.apto} />
+                      <Chip tono={TONO[pista.u.inmueble.estadoPago]} icono={ICONO_CHIP[pista.u.inmueble.estadoPago]}>
+                        {ESTADO_CARTERA_TEXTO[pista.u.inmueble.estadoPago]}
+                      </Chip>
+                    </div>
+                    <p className={styles.pistaValor}>
+                      {pista.u.inmueble.saldoPendiente > 0 ? pesos(pista.u.inmueble.saldoPendiente) : 'Sin saldo'}
+                    </p>
+                    <p className={styles.pistaFecha}>{textoFecha(pista.u)}</p>
+                  </div>,
+                  document.body,
+                )}
             </div>
           ) : (
             <div className={styles.listaMarco}>
